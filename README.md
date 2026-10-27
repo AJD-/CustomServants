@@ -33,15 +33,12 @@ chathead, until a supported renderer holds the renderer slot.
 
 ## Compatibility
 
-- **Retro NPC Swapper** and **Custom NPC Models**: Custom Servants runs alongside both, whichever
+- **Retro NPC Swapper** : Custom Servants runs alongside, whichever
   order they start in, once those plugins include their `feature/custom-servants-interop` change.
   With it, Retro NPC Swapper also leaves the servant NPCs Custom Servants has claimed alone, through
-  the shared `npc-model-swap` plugin-message protocol; for Custom NPC Models the change only covers
-  sharing the renderer. With an older build of either plugin (one that does not know this plugin's decorator), one of
-  the two plugins stands down while the other holds the renderer; which one depends on the build and
-  the start order.
-- A **Custom NPC Models** pack that binds a servant NPC competes with this plugin for that servant.
-  Whichever plugin attached to the renderer first wins.
+  the shared `npc-model-swap` plugin-message protocol. With an older build of that plugin (one that 
+  does not know this plugin's decorator), one of the two plugins stands down while the other holds 
+  the renderer; which one depends on the build and the start order.
 - With the `Interact Highlight` plugin on, the servant's hover and interact outline traces the
   vanilla model, not the override.
 
@@ -49,7 +46,7 @@ chathead, until a supported renderer holds the renderer slot.
 <summary>How it works</summary>
 
 - The plugin wraps the renderer's draw callbacks and, whenever a servant is drawn, hands the
-  renderer a model built from the override NPC's own cache models, with that NPC's recolours, scale
+  renderer a model built from the override NPC's own cache models, with that NPC's recolors, scale
   and NPC lighting.
 - **The servant's clickbox and menu are untouched.** The client resolves them from the vanilla model
   before the draw callback runs, so interacting with the servant works exactly as before.
