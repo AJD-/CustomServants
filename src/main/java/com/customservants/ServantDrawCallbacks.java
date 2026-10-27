@@ -63,8 +63,8 @@ import net.runelite.api.hooks.DrawCallbacks;
  * is read-only and never routes through here - traces the original silhouette rather than the one
  * on screen.
  * <p>
- * It is also a {@link Supplier} of its delegate. That is how Custom NPC Models and Retro NPC
- * Swapper, loaded by other classloaders and unable to name this type, see through it to the
+ * It is also a {@link Supplier} of its delegate. That is how Retro NPC Swapper and its sibling
+ * plugin, loaded by other classloaders and unable to name this type, see through it to the
  * renderer beneath - see {@link com.customservants.compatibility.RendererChain}.
  */
 @Slf4j

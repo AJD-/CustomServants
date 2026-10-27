@@ -41,13 +41,13 @@ import net.runelite.client.events.PluginMessage;
  * once it is listening, which this plugin answers by posting its claims again, so start order does
  * not matter. A plugin hears its own messages, so every read names the partner it expects them from.
  * <p>
- * Retro NPC Swapper and Custom NPC Models also exchange {@code outlines} and {@code outlinesOptOut}
+ * Retro NPC Swapper and its other partner plugin also exchange {@code outlines} and {@code outlinesOptOut}
  * messages over Interact Highlight's NPC outlines. This plugin takes no part in the outlines, so its
  * copy of the protocol leaves them out.
  * <p>
  * The plugins are loaded by different classloaders, so everything in a message is a JDK type or a
  * RuneLite API type, which all of them see through the client's classloader. A copy of this class
- * lives in each of the three plugins (Retro NPC Swapper, Custom NPC Models and this one) and the
+ * lives in each of the three plugins (Retro NPC Swapper, its other partner plugin and this one) and the
  * copies must stay in step; {@link #VERSION} is bumped on any incompatible change, and a message of
  * another version is ignored. The wire format here is identical to Retro NPC Swapper's copy; only the
  * reading side differs, in that {@link #readClaims} returns an unmodifiable copy and a null source
