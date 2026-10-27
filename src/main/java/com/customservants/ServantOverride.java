@@ -27,68 +27,68 @@ package com.customservants;
 import java.util.function.IntPredicate;
 import lombok.AccessLevel;
 import lombok.Getter;
+import net.runelite.api.gameval.AnimationID;
 import net.runelite.api.gameval.NpcID;
 
 /**
  * The NPC a house servant can be drawn as. Each entry lists the NPC ids to borrow the body model and
  * chathead from (first id that has one wins), plus what is needed to animate and light that model.
+ * <p>
+ * The values come from the live cache (the dev-only {@code NpcDefinitionDumper}); the body model,
+ * and so these values, is always that of the first id. How the rig is used at runtime:
+ * <ul>
+ * <li>{@link Rig#HUMAN} overrides share the servants' skeleton, so they are animated by the servant's
+ * own sequences. Their stand/walk here are informational only and unused at runtime (note that
+ * {@link #PRINCE_BRAND}'s cache stand is a lyre-playing loop, not a plain idle).</li>
+ * <li>{@link Rig#OTHER} overrides cannot play the servant's sequences, so their stand/walk are written
+ * onto the servant NPC and pose the override model.</li>
+ * </ul>
+ * The {@link #CRONDIS}, {@link #SCABARAS} and {@link #APMEKEN} stands and walks are skeletal (maya)
+ * sequences, which {@code Client#applyTransformations} may or may not pose. If they render wrong in
+ * game, the fallback is stand/walk = -1, which draws the base model unposed.
+ * <p>
+ * Recolours and the width/height scale are read from the body's {@code NPCComposition} at runtime,
+ * so they are not stored here. No override has retextures in the cache, so those arrays are empty.
  */
 @Getter
 public enum ServantOverride
 {
 	DEFAULT("Default", new int[0],
 		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
 	VYRELADY_HUMAN("Vyrelady (Human)", new int[]{NpcID.MYQ4_NOBLE_2, NpcID.TOB_NOBLE_2},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.OTHER, AnimationID.VYRELADY_READY, AnimationID.VYRELORD_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	VYRELADY_VAMPYRE("Vyrelady (Vampyre)", new int[]{NpcID.TOB_NOBLE_4},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.OTHER, AnimationID.VYRELADY_READY, AnimationID.VYRELORD_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	VYRELORD_HUMAN("Vyrelord (Human)", new int[]{NpcID.MYQ4_NOBLE_1, NpcID.TOB_NOBLE_1},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.OTHER, AnimationID.VYRELORD_READY, AnimationID.VYRELORD_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	VYRELORD_VAMPYRE("Vyrelord (Vampyre)", new int[]{NpcID.TOB_NOBLE_3},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.OTHER, AnimationID.VYRELORD_READY, AnimationID.VYRELORD_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	PRINCESS_ASTRID("Princess Astrid", new int[]{NpcID.MISC_PRINCESS_ASTRID, NpcID.ROYAL_CUTSCENE_PRINCESS_ASTRID},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.HUMAN, AnimationID.HUMAN_READY, AnimationID.HUMAN_WALK_F, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	PRINCE_BRAND("Prince Brand", new int[]{NpcID.MISC_PRINCE_BRAND, NpcID.ROYAL_CUTSCENE_PRINCE_BRAND},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.HUMAN, AnimationID.VIKING_LYRE_PLAYING_LOOP, AnimationID.HUMAN_WALK_F, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	ELENA("Elena", new int[]{NpcID.ELENA2_VIS},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.HUMAN, AnimationID.HUMAN_READY, AnimationID.HUMAN_WALK_F, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	AMY("Amy (Mahogany Homes)", new int[]{NpcID.CON_CONTRACTOR_1OP, NpcID.CON_CONTRACTOR_3OP},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.HUMAN, AnimationID.HUMAN_READY, AnimationID.HUMAN_WALK_F, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	CRONDIS("Crondis", new int[]{NpcID.TOA_CRONDIS_FREED_VIS, NpcID.TOA_CRONDIS_NEXUS_VIS},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.OTHER, AnimationID.NPC_CRONDIS_IDLE01, AnimationID.NPC_CRONDIS_WALK01, 20, 20, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	SCABARAS("Scabaras", new int[]{NpcID.TOA_SCABARAS_FREED_VIS, NpcID.TOA_SCABARAS_NEXUS_VIS},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.OTHER, AnimationID.NPC_SCABARAS_IDLE01, AnimationID.NPC_SCABARAS_WALK01, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	AMASCUT("Amascut", new int[]{NpcID.TOA_AMASCUT_VIS},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.HUMAN, AnimationID.HUMAN_READY, AnimationID.HUMAN_WALK_F, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	APMEKEN("Apmeken", new int[]{NpcID.TOA_APMEKEN_FREED_VIS, NpcID.TOA_APMEKEN_NEXUS_VIS},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.OTHER, AnimationID.NPC_APMEKEN_IDLE01, AnimationID.NPC_APMEKEN_WALK01, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	ZANIK("Zanik", new int[]{NpcID.DTTD_ZANIK_UNMARKED, NpcID.DTTD_ZANIK_WITH_TOG_BOWL},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.OTHER, AnimationID.DORGESH_GOBLIN_READY, AnimationID.DORGESH_GOBLIN_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	THURGO("Thurgo", new int[]{NpcID.THURGO},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.OTHER, AnimationID.DWARF_READY, AnimationID.DWARF_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	GNOME_CHILD("Gnome Child", new int[]{NpcID.GNOMECHILDGREEN},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.OTHER, AnimationID.GNOME_READY, AnimationID.GNOME_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	GNOME_CHEERLEADER("Gnome Cheerleader", new int[]{NpcID.GNOMECHEERLEADER},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
-	// T3: fill from the cache dump
+		Rig.OTHER, AnimationID.GNOME_READY, AnimationID.GNOME_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	ALI_MORRISANE("Ali Morrisane", new int[]{NpcID.FEUD_ALI_M},
-		Rig.OTHER, -1, -1, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP);
+		Rig.HUMAN, AnimationID.HUMAN_READY, AnimationID.HUMAN_WALK_F, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP);
 
 	/**
 	 * Holder so the enum constants above can use the empty array without an illegal forward reference.
@@ -106,7 +106,7 @@ public enum ServantOverride
 	 */
 	private final Rig rig;
 	/**
-	 * Stand sequence id, -1 when unknown.
+	 * Stand sequence id, -1 when unknown or to leave the model unposed.
 	 */
 	private final int standAnimation;
 	/**
@@ -114,11 +114,13 @@ public enum ServantOverride
 	 */
 	private final int walkAnimation;
 	/**
-	 * Raw ambient byte from the NPC's cache definition.
+	 * Raw signed ambient byte from the NPC's cache definition; the model cache lights with
+	 * {@code 64 + ambient}.
 	 */
 	private final int ambient;
 	/**
-	 * Raw contrast byte from the NPC's cache definition.
+	 * Raw signed contrast byte from the NPC's cache definition; the model cache lights with
+	 * {@code 850 + 5 * contrast}.
 	 */
 	private final int contrast;
 	@Getter(AccessLevel.NONE)

@@ -78,6 +78,11 @@ public final class NpcDefinitionDumper
 	 */
 	private static final int MAX_NAME_MATCHES = 40;
 
+	/**
+	 * Framemap of the player/humanoid skeleton, which every house servant is expected to stand on.
+	 */
+	private static final int PLAYER_FRAMEMAP = 0;
+
 	private final Store store;
 	private final NpcManager npcManager;
 	private final SequenceLoader sequenceLoader;
@@ -295,7 +300,6 @@ public final class NpcDefinitionDumper
 		// Reference framemaps come from the servants' own rig tags, so no NPC ids live in this tool
 		Map<String, Set<Integer>> framemapsByRole = new LinkedHashMap<>();
 		Set<Integer> humanFramemaps = new TreeSet<>();
-		Set<Integer> demonFramemaps = new TreeSet<>();
 		System.out.println("Servants (role, id, rig tag, stand):");
 		for (ServantIds.Servant servant : ServantIds.all())
 		{
@@ -318,36 +322,27 @@ public final class NpcDefinitionDumper
 			{
 				humanFramemaps.add(framemap);
 			}
-			else if (servant.getRig() == Rig.DEMON)
-			{
-				demonFramemaps.add(framemap);
-			}
 		}
 		System.out.println();
 		System.out.println("Stand framemaps by role: " + framemapsByRole);
 		System.out.println("Rig HUMAN servant framemaps: " + humanFramemaps);
-		System.out.println("Rig DEMON servant framemaps: " + demonFramemaps);
 
 		Integer humanFramemap = humanFramemaps.size() == 1 ? humanFramemaps.iterator().next() : null;
-		Integer demonFramemap = demonFramemaps.size() == 1 ? demonFramemaps.iterator().next() : null;
 		if (humanFramemap == null)
 		{
 			System.out.println("FLAG: the HUMAN-tagged servants do not share exactly one stand framemap; "
 				+ "override rigs cannot be derived and print as UNKNOWN");
 		}
-		if (demonFramemap == null)
+		else if (humanFramemap != PLAYER_FRAMEMAP)
 		{
-			System.out.println("FLAG: the DEMON-tagged servants do not share exactly one stand framemap");
-		}
-		if (humanFramemap != null && humanFramemap.equals(demonFramemap))
-		{
-			System.out.println("FLAG: HUMAN and DEMON servants share framemap " + humanFramemap);
+			System.out.println("FLAG: the HUMAN-tagged servants stand on framemap " + humanFramemap
+				+ ", not the player skeleton's framemap " + PLAYER_FRAMEMAP);
 		}
 		for (ServantIds.Servant servant : ServantIds.all())
 		{
 			NpcDefinition def = npcManager.get(servant.getNpcId());
 			Integer framemap = def == null ? null : sequence(def.standingAnimation).framemapOrNull();
-			Rig derived = deriveRig(framemap, humanFramemap, demonFramemap);
+			Rig derived = deriveRig(framemap, humanFramemap);
 			if (derived != null && derived != servant.getRig())
 			{
 				System.out.println("FLAG: " + servant.getRole() + " id " + servant.getNpcId() + " is tagged "
@@ -361,12 +356,12 @@ public final class NpcDefinitionDumper
 		{
 			if (override.isOverride())
 			{
-				printOverrideSummary(override, humanFramemap, demonFramemap);
+				printOverrideSummary(override, humanFramemap);
 			}
 		}
 	}
 
-	private void printOverrideSummary(ServantOverride override, Integer humanFramemap, Integer demonFramemap)
+	private void printOverrideSummary(ServantOverride override, Integer humanFramemap)
 	{
 		int[] ids = override.getNpcIds();
 		int bodyId = ServantOverride.firstMatching(ids, id -> hasModels(npcManager.get(id), true));
@@ -397,7 +392,7 @@ public final class NpcDefinitionDumper
 		}
 		else
 		{
-			Rig derived = deriveRig(stand.framemapOrNull(), humanFramemap, demonFramemap);
+			Rig derived = deriveRig(stand.framemapOrNull(), humanFramemap);
 			rig = derived == null ? "UNKNOWN (stand has no cleanly decoded framemap)" : derived.name();
 		}
 
@@ -441,24 +436,16 @@ public final class NpcDefinitionDumper
 	}
 
 	/**
-	 * @return HUMAN or DEMON when the framemap matches that servant group, OTHER when it matches neither,
+	 * @return HUMAN when the framemap is the servants' shared stand framemap, OTHER when it is not,
 	 * null when there is no framemap to compare
 	 */
-	private static Rig deriveRig(Integer framemap, Integer humanFramemap, Integer demonFramemap)
+	private static Rig deriveRig(Integer framemap, Integer humanFramemap)
 	{
 		if (framemap == null)
 		{
 			return null;
 		}
-		if (framemap.equals(humanFramemap))
-		{
-			return Rig.HUMAN;
-		}
-		if (framemap.equals(demonFramemap))
-		{
-			return Rig.DEMON;
-		}
-		return Rig.OTHER;
+		return framemap.equals(humanFramemap) ? Rig.HUMAN : Rig.OTHER;
 	}
 
 	private static boolean hasModels(NpcDefinition def, boolean body)

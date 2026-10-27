@@ -36,7 +36,7 @@ import org.junit.Test;
 
 public class ServantIdsTest
 {
-	private static final List<Integer> HUMAN_IDS = Arrays.asList(
+	private static final List<Integer> HUMAN_SERVANT_IDS = Arrays.asList(
 		NpcID.POH_SERVANT_DOGSBODY,
 		NpcID.POH_SERVANT_MULTI_DOGSBODY,
 		NpcID.POH_SERVANT_DOGSBODY_CUTSCENE,
@@ -50,7 +50,7 @@ public class ServantIdsTest
 		NpcID.POH_SERVANT_MULTI_MAITRE_D_MAN,
 		NpcID.POH_SERVANT_MAITRE_D_MAN_CUTSCENE);
 
-	private static final List<Integer> DEMON_IDS = Arrays.asList(
+	private static final List<Integer> DEMON_BUTLER_IDS = Arrays.asList(
 		NpcID.POH_SERVANT_DEMON,
 		NpcID.POH_SERVANT_MULTI_DEMON,
 		NpcID.POH_SERVANT_DEMON_CUTSCENE,
@@ -59,11 +59,11 @@ public class ServantIdsTest
 	@Test
 	public void hasExactlySixteenServantIds()
 	{
-		// 12 human (Rick, Maid, Cook, Butler) + 4 demon butler
+		// 12 for Rick, Maid, Cook and Butler + 4 for the Demon butler
 		assertEquals(16, ServantIds.allIds().size());
 		assertEquals(16, ServantIds.all().size());
-		assertTrue(ServantIds.allIds().containsAll(HUMAN_IDS));
-		assertTrue(ServantIds.allIds().containsAll(DEMON_IDS));
+		assertTrue(ServantIds.allIds().containsAll(HUMAN_SERVANT_IDS));
+		assertTrue(ServantIds.allIds().containsAll(DEMON_BUTLER_IDS));
 	}
 
 	@Test
@@ -74,28 +74,33 @@ public class ServantIdsTest
 	}
 
 	@Test
-	public void humanServantsAreHumanRig()
+	public void everyServantIsHumanRig()
 	{
-		assertEquals(12, HUMAN_IDS.size());
-		for (int id : HUMAN_IDS)
+		// The cache puts every servant, the Demon butler included, on the player skeleton (framemap 0)
+		assertEquals(16, ServantIds.all().size());
+		for (ServantIds.Servant servant : ServantIds.all())
+		{
+			assertEquals(servant.getRole() + " " + servant.getNpcId(), Rig.HUMAN, servant.getRig());
+		}
+	}
+
+	@Test
+	public void listedIdsAreServantsWithTheirOwnId()
+	{
+		for (int id : HUMAN_SERVANT_IDS)
 		{
 			ServantIds.Servant servant = ServantIds.get(id);
 			assertNotNull("missing servant " + id, servant);
 			assertEquals(id, servant.getNpcId());
 			assertEquals(Rig.HUMAN, servant.getRig());
 		}
-	}
-
-	@Test
-	public void demonServantsAreDemonRig()
-	{
-		assertEquals(4, DEMON_IDS.size());
-		for (int id : DEMON_IDS)
+		for (int id : DEMON_BUTLER_IDS)
 		{
 			ServantIds.Servant servant = ServantIds.get(id);
 			assertNotNull("missing servant " + id, servant);
+			assertEquals(id, servant.getNpcId());
 			assertEquals("Demon butler", servant.getRole());
-			assertEquals(Rig.DEMON, servant.getRig());
+			assertEquals(Rig.HUMAN, servant.getRig());
 		}
 	}
 

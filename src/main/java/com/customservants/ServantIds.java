@@ -35,6 +35,9 @@ import net.runelite.api.gameval.NpcID;
 /**
  * Every NPC id a player-owned house servant can appear as, with the servant's role and rig.
  * <p>
+ * Every servant is {@link Rig#HUMAN}: the cache shows all of them, the Demon butler included
+ * (its Leagues variant has its own stand/walk ids), standing on the player skeleton, framemap 0.
+ * <p>
  * {@link NpcID#POH_CHIEF_SERVANT} is deliberately absent: it is the Servants' Guild NPC, not a
  * house servant.
  */
@@ -69,7 +72,7 @@ public final class ServantIds
 			NpcID.POH_SERVANT_MAITRE_D_MAN,
 			NpcID.POH_SERVANT_MULTI_MAITRE_D_MAN,
 			NpcID.POH_SERVANT_MAITRE_D_MAN_CUTSCENE);
-		add(servants, "Demon butler", Rig.DEMON,
+		add(servants, "Demon butler", Rig.HUMAN,
 			NpcID.POH_SERVANT_DEMON,
 			NpcID.POH_SERVANT_MULTI_DEMON,
 			NpcID.POH_SERVANT_DEMON_CUTSCENE,

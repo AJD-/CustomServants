@@ -54,7 +54,7 @@ public class PosePlanTest
 	@Test
 	public void differentRigDropsTheAction()
 	{
-		PosePlan p = ServantModelCache.plan(Rig.DEMON, Rig.HUMAN, NPC_ACTION, STAND, STAND, WALK);
+		PosePlan p = ServantModelCache.plan(Rig.HUMAN, Rig.OTHER, NPC_ACTION, STAND, STAND, WALK);
 
 		assertEquals(-1, p.getAction());
 		assertFalse(p.isUseNpcActionFrame());
@@ -63,7 +63,7 @@ public class PosePlanTest
 	@Test
 	public void differentRigKeepsNpcPoseWhenItIsTheOverrideStand()
 	{
-		PosePlan p = ServantModelCache.plan(Rig.DEMON, Rig.HUMAN, NPC_ACTION, STAND, STAND, WALK);
+		PosePlan p = ServantModelCache.plan(Rig.HUMAN, Rig.OTHER, NPC_ACTION, STAND, STAND, WALK);
 
 		assertEquals(new PosePlan(-1, STAND, false, true), p);
 	}
@@ -71,7 +71,7 @@ public class PosePlanTest
 	@Test
 	public void differentRigKeepsNpcPoseWhenItIsTheOverrideWalk()
 	{
-		PosePlan p = ServantModelCache.plan(Rig.DEMON, Rig.HUMAN, NPC_ACTION, WALK, STAND, WALK);
+		PosePlan p = ServantModelCache.plan(Rig.HUMAN, Rig.OTHER, NPC_ACTION, WALK, STAND, WALK);
 
 		assertEquals(new PosePlan(-1, WALK, false, true), p);
 	}
@@ -79,7 +79,7 @@ public class PosePlanTest
 	@Test
 	public void missingWalkFallsBackToStand()
 	{
-		PosePlan p = ServantModelCache.plan(Rig.DEMON, Rig.HUMAN, NPC_ACTION, STAND, STAND, -1);
+		PosePlan p = ServantModelCache.plan(Rig.HUMAN, Rig.OTHER, NPC_ACTION, STAND, STAND, -1);
 
 		assertEquals(new PosePlan(-1, STAND, false, true), p);
 	}
@@ -87,7 +87,7 @@ public class PosePlanTest
 	@Test
 	public void foreignPoseGivesOverrideStandAtFrameZero()
 	{
-		PosePlan p = ServantModelCache.plan(Rig.DEMON, Rig.HUMAN, NPC_ACTION, FOREIGN_POSE, STAND, WALK);
+		PosePlan p = ServantModelCache.plan(Rig.HUMAN, Rig.OTHER, NPC_ACTION, FOREIGN_POSE, STAND, WALK);
 
 		assertEquals(new PosePlan(-1, STAND, false, false), p);
 	}
@@ -95,7 +95,7 @@ public class PosePlanTest
 	@Test
 	public void missingStandDrawsTheBaseUnposed()
 	{
-		PosePlan p = ServantModelCache.plan(Rig.DEMON, Rig.HUMAN, NPC_ACTION, FOREIGN_POSE, -1, WALK);
+		PosePlan p = ServantModelCache.plan(Rig.HUMAN, Rig.OTHER, NPC_ACTION, FOREIGN_POSE, -1, WALK);
 
 		assertEquals(new PosePlan(-1, -1, false, false), p);
 	}

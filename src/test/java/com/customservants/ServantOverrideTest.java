@@ -28,10 +28,12 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import net.runelite.api.gameval.AnimationID;
 import net.runelite.api.gameval.NpcID;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -153,6 +155,93 @@ public class ServantOverrideTest
 		for (ServantOverride override : ServantOverride.values())
 		{
 			assertEquals(override.toString(), override != ServantOverride.DEFAULT, override.isOverride());
+		}
+	}
+
+	@Test
+	public void everyOverrideHasStandAndWalk()
+	{
+		for (ServantOverride override : ServantOverride.values())
+		{
+			if (override.isOverride())
+			{
+				assertNotEquals(override + " stand", -1, override.getStandAnimation());
+				assertNotEquals(override + " walk", -1, override.getWalkAnimation());
+			}
+		}
+	}
+
+	@Test
+	public void humanRigOverridesWalkOnTheHumanWalk()
+	{
+		for (ServantOverride override : ServantOverride.values())
+		{
+			if (override.getRig() == Rig.HUMAN)
+			{
+				assertEquals(override.toString(), AnimationID.HUMAN_WALK_F, override.getWalkAnimation());
+			}
+		}
+	}
+
+	@Test
+	public void humanRigOverridesAreTheFramemapZeroBodies()
+	{
+		Set<ServantOverride> human = new HashSet<>();
+		for (ServantOverride override : ServantOverride.values())
+		{
+			if (override.getRig() == Rig.HUMAN)
+			{
+				human.add(override);
+			}
+		}
+		assertEquals(new HashSet<>(Arrays.asList(ServantOverride.PRINCESS_ASTRID, ServantOverride.PRINCE_BRAND,
+			ServantOverride.ELENA, ServantOverride.AMY, ServantOverride.AMASCUT, ServantOverride.ALI_MORRISANE)), human);
+	}
+
+	@Test
+	public void skeletalToaOverridesAreOtherRig()
+	{
+		assertEquals(Rig.OTHER, ServantOverride.CRONDIS.getRig());
+		assertEquals(Rig.OTHER, ServantOverride.SCABARAS.getRig());
+		assertEquals(Rig.OTHER, ServantOverride.APMEKEN.getRig());
+	}
+
+	@Test
+	public void onlyCrondisHasNonZeroLighting()
+	{
+		assertEquals(20, ServantOverride.CRONDIS.getAmbient());
+		assertEquals(20, ServantOverride.CRONDIS.getContrast());
+		for (ServantOverride override : ServantOverride.values())
+		{
+			if (override != ServantOverride.CRONDIS)
+			{
+				assertEquals(override + " ambient", 0, override.getAmbient());
+				assertEquals(override + " contrast", 0, override.getContrast());
+			}
+		}
+	}
+
+	@Test
+	public void rigHasOnlyHumanAndOther()
+	{
+		assertArrayEquals(new Rig[]{Rig.HUMAN, Rig.OTHER}, Rig.values());
+	}
+
+	@Test
+	public void noOverrideHasRetextures()
+	{
+		for (ServantOverride override : ServantOverride.values())
+		{
+			assertEquals(override.toString(), 0, override.getRetextureFind().length);
+		}
+	}
+
+	@Test
+	public void everyOverrideKeepsTheChatheadEmote()
+	{
+		for (ServantOverride override : ServantOverride.values())
+		{
+			assertEquals(override.toString(), ChatheadEmote.KEEP, override.getChatheadEmote());
 		}
 	}
 }

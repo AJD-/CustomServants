@@ -30,7 +30,13 @@ package com.customservants;
  */
 public enum Rig
 {
+	/**
+	 * The player/humanoid skeleton (framemap 0) that every player-owned house servant, the Demon
+	 * butler included, animates on.
+	 */
 	HUMAN,
-	DEMON,
+	/**
+	 * Any other rig: a different framemap or a skeletal (maya) skeleton.
+	 */
 	OTHER
 }
