@@ -52,10 +52,12 @@ chathead, until a supported renderer holds the renderer slot.
   and NPC lighting.
 - **The servant's clickbox and menu are untouched.** The client resolves them from the vanilla model
   before the draw callback runs, so interacting with the servant works exactly as before.
-- **Overrides on the same rig as the servant** (the human NPCs) are animated by the servant's own
-  animations, so they move and act exactly as the servant does.
-- **Overrides on another rig** cannot play the servant's animations. They get the override NPC's own
-  stand and walk instead, and hold their pose while the servant performs an action.
+- **Overrides on the same rig as the servant** (Princess Astrid, Prince Brand, Elena, Amy, Amascut
+  and Ali Morrisane) are animated by the servant's own animations, so they move and act exactly as
+  the servant does.
+- **Overrides on another rig** (every other choice) cannot play the servant's animations. They get
+  the override NPC's own stand and walk instead, and hold their pose while the servant performs an
+  action.
 - **The dialogue chathead** is swapped by pointing the chat head widget at the override NPC, so the
   client draws that NPC's chathead from the cache.
 - **Nothing is downloaded and nothing is injected.** No models ship with the plugin: everything it
