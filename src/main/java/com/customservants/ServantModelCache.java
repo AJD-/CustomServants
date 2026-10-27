@@ -61,8 +61,17 @@ public class ServantModelCache
 
 	private ServantOverride override = ServantOverride.DEFAULT;
 
-	// Lit and unposed; null when nothing has been built (or nothing could be)
+	// Lit and unposed, at the model's natural size; null when nothing has been built (or nothing could be)
 	private Model base;
+
+	// The composition's width/height scale, applied after posing as the client does. Scaling the
+	// vertices before a skeletal (maya) sequence poses them distorts the pose, because the bone
+	// transforms assume the unscaled mesh - Crondis and Apmeken (scale 92 and 84) showed that in game
+	private int widthScale = UNSCALED;
+	private int heightScale = UNSCALED;
+
+	// Pre-scaled copy of base for the no-animation path only; null when the scale is 128
+	private Model scaledBase;
 
 	private int chatheadNpcId = -1;
 
@@ -130,7 +139,20 @@ public class ServantModelCache
 			return c != null && c.getChatheadModels() != null && c.getChatheadModels().length > 0;
 		});
 
-		base = bodyId == -1 ? null : build(client.getNpcDefinition(bodyId));
+		NPCComposition body = bodyId == -1 ? null : client.getNpcDefinition(bodyId);
+		ModelData merged = body == null ? null : build(body);
+		if (merged != null)
+		{
+			base = light(merged);
+			widthScale = body.getWidthScale();
+			heightScale = body.getHeightScale();
+			if (widthScale != UNSCALED || heightScale != UNSCALED)
+			{
+				// For the no-animation path, which cannot scale the shared sequence model. The
+				// clone keeps the lit base at its natural size
+				scaledBase = light(merged.cloneVertices().scale(widthScale, heightScale, widthScale));
+			}
+		}
 		if (base == null)
 		{
 			unbuildable = true;
@@ -142,10 +164,11 @@ public class ServantModelCache
 	}
 
 	/**
-	 * Merges, recolours, retextures, scales and lights a composition's models the way the client
-	 * builds an NPC's, minus any animation. Null when none of its models load.
+	 * Merges, recolours and retextures a composition's models the way the client builds an NPC's,
+	 * minus lighting (see {@link #light}), minus any animation and minus the width/height scale,
+	 * which is applied per frame after posing. Null when none of its models load.
 	 */
-	private Model build(NPCComposition c)
+	private ModelData build(NPCComposition c)
 	{
 		int[] modelIds = c.getModels();
 		ModelData[] parts = new ModelData[modelIds.length];
@@ -174,7 +197,7 @@ public class ServantModelCache
 		short[] repl = c.getColorToReplaceWith();
 		if (find != null && repl != null)
 		{
-			// cloneColors first, for the same reason as cloneVertices below - loadModelData hands
+			// cloneColors first - loadModelData hands
 			// back the client's shared arrays, and recoloring in place would repaint the cached
 			// model for everything else using it
 			merged = merged.cloneColors();
@@ -199,15 +222,16 @@ public class ServantModelCache
 			}
 		}
 
-		int w = c.getWidthScale();
-		int h = c.getHeightScale();
-		if (w != UNSCALED || h != UNSCALED)
-		{
-			// cloneVertices first - loadModelData hands back the client's shared arrays, and
-			// scaling in place would resize the cached model for everything else using it
-			merged = merged.cloneVertices().scale(w, h, w);
-		}
+		// Width/height scale is not applied here: the client scales the posed model, after the
+		// animation has run, and so does pose()
+		return merged;
+	}
 
+	/**
+	 * Lights with the NPC constants rather than {@code light()}'s item/scenery defaults.
+	 */
+	private Model light(ModelData merged)
+	{
 		return merged.light(NPC_AMBIENT + override.getAmbient(), NPC_CONTRAST + 5 * override.getContrast(),
 			LIGHT_X, LIGHT_Y, LIGHT_Z);
 	}
@@ -256,7 +280,27 @@ public class ServantModelCache
 		Animation pose = animation(p.getPose());
 		int af = p.isUseNpcActionFrame() ? clampFrame(action, npc.getAnimationFrame()) : 0;
 		int pf = p.isUseNpcPoseFrame() ? clampFrame(pose, npc.getPoseAnimationFrame()) : 0;
-		return client.applyTransformations(base, action, af, pose, pf);
+		if (action == null && pose == null)
+		{
+			// Nothing to pose. applyTransformations may hand the base itself back here, so it is
+			// not scaled in place; a pre-scaled copy stands in for it
+			return scaledBase();
+		}
+
+		Model posed = client.applyTransformations(base, action, af, pose, pf);
+		if (posed != null && (widthScale != UNSCALED || heightScale != UNSCALED))
+		{
+			// The posed model is the client's shared sequence model, rebuilt from base on every
+			// call, so scaling it in place is per frame and never accumulates - the same order the
+			// client uses for its own NPCs (animate, then scale)
+			posed.scale(widthScale, heightScale, widthScale);
+		}
+		return posed;
+	}
+
+	private Model scaledBase()
+	{
+		return scaledBase != null ? scaledBase : base;
 	}
 
 	/**
@@ -265,6 +309,9 @@ public class ServantModelCache
 	public void clear()
 	{
 		base = null;
+		scaledBase = null;
+		widthScale = UNSCALED;
+		heightScale = UNSCALED;
 		chatheadNpcId = -1;
 		built = false;
 		unbuildable = false;
