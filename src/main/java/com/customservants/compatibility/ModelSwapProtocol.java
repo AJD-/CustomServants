@@ -49,7 +49,9 @@ import net.runelite.client.events.PluginMessage;
  * RuneLite API type, which all of them see through the client's classloader. A copy of this class
  * lives in each of the three plugins (Retro NPC Swapper, Custom NPC Models and this one) and the
  * copies must stay in step; {@link #VERSION} is bumped on any incompatible change, and a message of
- * another version is ignored.
+ * another version is ignored. The wire format here is identical to Retro NPC Swapper's copy; only the
+ * reading side differs, in that {@link #readClaims} returns an unmodifiable copy and a null source
+ * never matches.
  */
 public final class ModelSwapProtocol
 {

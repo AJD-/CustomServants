@@ -78,6 +78,7 @@ public class PartnerClaims
 	public void withdraw()
 	{
 		posted = Collections.emptySet();
+		log.debug("Withdrawing servant NPC claims");
 		eventBus.post(ModelSwapProtocol.claimsMessage(Collections.emptySet()));
 	}
 }

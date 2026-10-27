@@ -141,6 +141,9 @@ public class CustomServantsPlugin extends Plugin
 				// for models, and only an empty cache makes it draw the vanilla ones
 				modelCache.clear();
 				modelCache.setOverride(ServantOverride.DEFAULT);
+				// Again, and last: client thread work runs one item at a time, so this lands after any
+				// publish already under way when active went false, and the empty set is the final word
+				partnerClaims.withdraw();
 			}
 		});
 	}
@@ -290,7 +293,8 @@ public class CustomServantsPlugin extends Plugin
 	/** Re-decides every loaded NPC. Only on transitions, never per tick or frame. Client thread only. */
 	private void recheckLoadedNpcs()
 	{
-		// Before the early returns, so a logged-out or detached state gives the servants back too
+		// Before the early returns, so a detach or failed build gives the servants back even when
+		// there is no scene to recheck
 		partnerClaims.publish(canSwap(), false);
 
 		if (client.getGameState() != GameState.LOGGED_IN)
