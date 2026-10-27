@@ -24,6 +24,8 @@
  */
 package com.customservants;
 
+import com.customservants.compatibility.ModelSwapProtocol;
+import com.customservants.compatibility.PartnerClaims;
 import com.google.inject.Provides;
 import java.util.HashMap;
 import java.util.Map;
@@ -44,6 +46,7 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
+import net.runelite.client.events.PluginMessage;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
@@ -55,6 +58,9 @@ import net.runelite.client.plugins.PluginDescriptor;
 )
 public class CustomServantsPlugin extends Plugin
 {
+	/** Another Hub plugin, so recognized by class name alone, never imported. */
+	private static final String RETRO_PLUGIN_CLASS = "com.retronpcswapper.RetroNpcSwapperPlugin";
+
 	@Inject
 	private Client client;
 
@@ -75,6 +81,9 @@ public class CustomServantsPlugin extends Plugin
 
 	@Inject
 	private ChatheadSwapper chatheadSwapper;
+
+	@Inject
+	private PartnerClaims partnerClaims;
 
 	/** Set on the EDT by startUp/shutDown, read on the client thread. */
 	private volatile boolean active;
@@ -110,20 +119,29 @@ public class CustomServantsPlugin extends Plugin
 	protected void shutDown() throws Exception
 	{
 		active = false;
+		// Before the client thread work, so Retro NPC Swapper gets the servants back even if it
+		// never runs
+		partnerClaims.withdraw();
 		log.info("Custom Servants stopped");
 		eventBus.unregister(chatheadSwapper);
 
 		// One runnable, so no frame is drawn between the steps
 		clientThread.invoke(() ->
 		{
-			// A dialogue left open shows the servant's own head again
-			chatheadSwapper.stop();
-			resetAllNpcs();
-			attachment.detach();
-			// Even when detach left our decorator buried beneath another plugin's: it keeps asking
-			// for models, and only an empty cache makes it draw the vanilla ones
-			modelCache.clear();
-			modelCache.setOverride(ServantOverride.DEFAULT);
+			try
+			{
+				// A dialogue left open shows the servant's own head again
+				chatheadSwapper.stop();
+				resetAllNpcs();
+			}
+			finally
+			{
+				attachment.detach();
+				// Even when detach left our decorator buried beneath another plugin's: it keeps asking
+				// for models, and only an empty cache makes it draw the vanilla ones
+				modelCache.clear();
+				modelCache.setOverride(ServantOverride.DEFAULT);
+			}
 		});
 	}
 
@@ -211,8 +229,8 @@ public class CustomServantsPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		// Cheap guard: the GPU plugin and 117 HD overwrite the draw callbacks slot when they restart,
-		// sometimes without any plugin event. Not once stopped: a tick can still arrive between
-		// shutDown's detach and RuneLite unregistering the plugin.
+		// sometimes without any plugin event. RuneLite unregisters a plugin before calling shutDown,
+		// so the active guard only covers a tick already mid-dispatch when shutDown runs.
 		if (active && attachment.isLost())
 		{
 			attach();
@@ -227,6 +245,26 @@ public class CustomServantsPlugin extends Plugin
 			log.debug("Renderer plugin {} {}", event.getPlugin().getName(), event.isLoaded() ? "started" : "stopped");
 			// attach() declines on its own when no supported renderer holds the slot
 			clientThread.invoke(this::attach);
+		}
+
+		// Forced: Retro NPC Swapper ignores claims while it is off, and its own sync request may
+		// have been posted before we were listening. Our own start likewise posted claims before
+		// Retro NPC Swapper could hear anything from us.
+		boolean retroStarted = RETRO_PLUGIN_CLASS.equals(event.getPlugin().getClass().getName()) && event.isLoaded();
+		boolean weStarted = event.getPlugin() == this && event.isLoaded();
+		if (retroStarted || weStarted)
+		{
+			clientThread.invoke(() -> partnerClaims.publish(canSwap(), true));
+		}
+	}
+
+	@Subscribe
+	public void onPluginMessage(PluginMessage event)
+	{
+		// We never ask Retro NPC Swapper for anything ourselves; we only answer it
+		if (ModelSwapProtocol.isSyncReq(event, ModelSwapProtocol.SOURCE_RETRO_NPC_SWAPPER))
+		{
+			clientThread.invoke(() -> partnerClaims.publish(canSwap(), true));
 		}
 	}
 
@@ -252,6 +290,9 @@ public class CustomServantsPlugin extends Plugin
 	/** Re-decides every loaded NPC. Only on transitions, never per tick or frame. Client thread only. */
 	private void recheckLoadedNpcs()
 	{
+		// Before the early returns, so a logged-out or detached state gives the servants back too
+		partnerClaims.publish(canSwap(), false);
+
 		if (client.getGameState() != GameState.LOGGED_IN)
 		{
 			return;
