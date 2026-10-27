@@ -24,6 +24,8 @@
  */
 package com.customservants;
 
+import com.customservants.compatibility.InteractHighlightCompat;
+import com.customservants.compatibility.InteractTargetTracker;
 import com.customservants.compatibility.ModelSwapProtocol;
 import com.customservants.compatibility.PartnerClaims;
 import com.google.inject.Provides;
@@ -47,6 +49,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
 import net.runelite.client.events.PluginMessage;
+import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
@@ -60,6 +63,9 @@ public class CustomServantsPlugin extends Plugin
 {
 	/** Another Hub plugin, so recognized by class name alone, never imported. */
 	private static final String RETRO_PLUGIN_CLASS = "com.retronpcswapper.RetroNpcSwapperPlugin";
+
+	/** Likewise a Hub plugin, recognized by class name alone. */
+	private static final String CUSTOM_NPC_MODELS_PLUGIN_CLASS = "com.customnpcmodels.CustomNpcModelsPlugin";
 
 	@Inject
 	private Client client;
@@ -85,6 +91,12 @@ public class CustomServantsPlugin extends Plugin
 	@Inject
 	private PartnerClaims partnerClaims;
 
+	@Inject
+	private OutlineTakeover outlineTakeover;
+
+	@Inject
+	private InteractTargetTracker targetTracker;
+
 	/** Set on the EDT by startUp/shutDown, read on the client thread. */
 	private volatile boolean active;
 
@@ -102,8 +114,12 @@ public class CustomServantsPlugin extends Plugin
 		// the wrapper; this keeps body, animations, chathead and claims on the same isAttached() predicate
 		attachment.setSubstitutor(npc -> attachment.isAttached() ? modelCache.pose(npc) : null);
 		chatheadSwapper.start(this::canSwap);
+		outlineTakeover.start(this::canSwap);
 		clientThread.invoke(() ->
 		{
+			// First: a session that died while suppressing left Interact Highlight's NPC outlines
+			// off, and that is put right before anything below can fail
+			outlineTakeover.restoreStaleStash();
 			modelCache.setOverride(config.servantOverride());
 			attach();
 			// Built now, not only on a servant spawn, so the chathead NPC is resolved before any
@@ -115,6 +131,7 @@ public class CustomServantsPlugin extends Plugin
 		// Last, as RuneLite registers the plugin itself: the bus does not dedupe, so registering
 		// before something that can throw would register it twice on the next start
 		eventBus.register(chatheadSwapper);
+		eventBus.register(targetTracker);
 	}
 
 	@Override
@@ -126,6 +143,9 @@ public class CustomServantsPlugin extends Plugin
 		partnerClaims.withdraw();
 		log.info("Custom Servants stopped");
 		eventBus.unregister(chatheadSwapper);
+		eventBus.unregister(targetTracker);
+		// No early outlines withdraw, unlike the claims: a partner that took the outlines over
+		// before the restore below would stash our false values as the user's
 
 		// One runnable, so no frame is drawn between the steps
 		clientThread.invoke(() ->
@@ -153,6 +173,26 @@ public class CustomServantsPlugin extends Plugin
 			finally
 			{
 				attachment.detach();
+				// active is false, so canSwap is too: puts Interact Highlight's NPC outlines back,
+				// removes our overlay and clears the outliner
+				try
+				{
+					outlineTakeover.sync();
+				}
+				catch (RuntimeException e)
+				{
+					log.debug("Handing the outlines back failed", e);
+				}
+				// Only after that restore, so a partner that takes the outlines over on hearing this
+				// stashes Interact Highlight's own settings rather than our false ones
+				try
+				{
+					outlineTakeover.withdraw();
+				}
+				catch (RuntimeException e)
+				{
+					log.debug("Withdrawing the outlines failed", e);
+				}
 				// Even when detach left our decorator buried beneath another plugin's: it keeps asking
 				// for models, and only an empty cache makes it draw the vanilla ones
 				modelCache.clear();
@@ -173,12 +213,26 @@ public class CustomServantsPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (!CustomServantsConfig.GROUP.equals(event.getGroup()))
+		// First, as it is in Interact Highlight's group: the user turning its NPC outlines back on
+		if (outlineTakeover.handleUserOverride(event))
+		{
+			return;
+		}
+		// The stash is written from inside suppress() and restore(), and changes nothing a servant
+		// shows: resetting the servants from inside that write must not happen
+		if (!CustomServantsConfig.GROUP.equals(event.getGroup()) || InteractHighlightCompat.isStashKey(event.getKey()))
 		{
 			return;
 		}
 
 		log.debug("Config changed: {} = {}", event.getKey(), event.getNewValue());
+		if (CustomServantsConfig.OVERRIDE_INTERACT_HIGHLIGHT.equals(event.getKey()))
+		{
+			// Only the outlines depend on it
+			clientThread.invoke(outlineTakeover::sync);
+			return;
+		}
+
 		clientThread.invoke(() ->
 		{
 			// Restored before the recheck, so no snapshot is taken of the old override's animations.
@@ -215,6 +269,8 @@ public class CustomServantsPlugin extends Plugin
 			case CONNECTION_LOST:
 				// Those NPCs are gone; there is nothing to restore onto
 				originalStates.clear();
+				// Nor anything to outline: drop the carrier's reference to a posed model
+				outlineTakeover.clearCarrier();
 				break;
 			default:
 				break;
@@ -259,32 +315,107 @@ public class CustomServantsPlugin extends Plugin
 	@Subscribe
 	public void onPluginChanged(PluginChanged event)
 	{
-		if (RendererAttachment.isRendererPlugin(event.getPlugin()))
+		Plugin plugin = event.getPlugin();
+		String className = plugin.getClass().getName();
+		if (plugin == this && event.isLoaded())
 		{
-			log.debug("Renderer plugin {} {}", event.getPlugin().getName(), event.isLoaded() ? "started" : "stopped");
+			// Our own start posted claims before any partner could hear us, and a partner already
+			// running cannot know we started: ask it for its state, and send ours. Forced, as the
+			// start-up publish went out before anyone was listening.
+			log.debug("Started; asking the partners for their state");
+			eventBus.post(ModelSwapProtocol.synMessage(ModelSwapProtocol.SOURCE_CUSTOM_SERVANTS));
+			clientThread.invoke(() -> partnerClaims.publish(canSwap(), true));
+			// The partners answer the syn through invoke, so their answers are queued ahead of this
+			clientThread.invokeLater(outlineTakeover::finishHandshake);
+		}
+		else if (RendererAttachment.isRendererPlugin(plugin))
+		{
+			log.debug("Renderer plugin {} {}", plugin.getName(), event.isLoaded() ? "started" : "stopped");
 			// attach() declines on its own when no supported renderer holds the slot
 			clientThread.invoke(this::attach);
 		}
-
-		// Forced: Retro NPC Swapper ignores claims while it is off, and its own sync request may
-		// have been posted before we were listening. Our own start likewise posted claims before
-		// Retro NPC Swapper could hear anything from us.
-		boolean retroStarted = RETRO_PLUGIN_CLASS.equals(event.getPlugin().getClass().getName()) && event.isLoaded();
-		boolean weStarted = event.getPlugin() == this && event.isLoaded();
-		if (retroStarted || weStarted)
+		else if (OutlineTakeover.isInteractHighlight(plugin))
 		{
-			clientThread.invoke(() -> partnerClaims.publish(canSwap(), true));
+			// Its restart undoes the suppression, and its stop leaves nothing to take over
+			log.debug("Interact Highlight {}", event.isLoaded() ? "started" : "stopped");
+			clientThread.invoke(outlineTakeover::sync);
+		}
+		else if (RETRO_PLUGIN_CLASS.equals(className))
+		{
+			log.debug("Retro NPC Swapper {}", event.isLoaded() ? "started" : "stopped");
+			if (event.isLoaded())
+			{
+				// Forced: Retro NPC Swapper ignores claims and outlines while it is off, and its own
+				// sync request may have been posted before we were listening
+				clientThread.invoke(() ->
+				{
+					partnerClaims.publish(canSwap(), true);
+					outlineTakeover.publish(true);
+				});
+			}
+			else
+			{
+				outlineTakeover.onPartnerStopped(ModelSwapProtocol.SOURCE_RETRO_NPC_SWAPPER);
+			}
+		}
+		else if (CUSTOM_NPC_MODELS_PLUGIN_CLASS.equals(className))
+		{
+			log.debug("Custom NPC Models {}", event.isLoaded() ? "started" : "stopped");
+			if (event.isLoaded())
+			{
+				// It reads no claims, only the outlines
+				clientThread.invoke(() -> outlineTakeover.publish(true));
+			}
+			else
+			{
+				outlineTakeover.onPartnerStopped(ModelSwapProtocol.SOURCE_CUSTOM_NPC_MODELS);
+			}
 		}
 	}
 
 	@Subscribe
 	public void onPluginMessage(PluginMessage event)
 	{
-		// We never ask Retro NPC Swapper for anything ourselves; we only answer it
-		if (ModelSwapProtocol.isSyncReq(event, ModelSwapProtocol.SOURCE_RETRO_NPC_SWAPPER))
+		String syncFrom = ModelSwapProtocol.partnerSource(event, ModelSwapProtocol.SYN);
+		if (syncFrom != null)
 		{
-			clientThread.invoke(() -> partnerClaims.publish(canSwap(), true));
+			log.debug("Sync request from {}", syncFrom);
+			clientThread.invoke(() ->
+			{
+				// Only Retro NPC Swapper reads claims
+				if (ModelSwapProtocol.SOURCE_RETRO_NPC_SWAPPER.equals(syncFrom))
+				{
+					partnerClaims.publish(canSwap(), true);
+				}
+				outlineTakeover.publish(true);
+			});
+			return;
 		}
+
+		String outlinesFrom = ModelSwapProtocol.partnerSource(event, ModelSwapProtocol.OUTLINES);
+		if (outlinesFrom != null)
+		{
+			ModelSwapProtocol.Outlines outlines = ModelSwapProtocol.readOutlines(event, outlinesFrom);
+			if (outlines != null)
+			{
+				outlineTakeover.onPartnerOutlines(outlinesFrom, outlines);
+			}
+			return;
+		}
+
+		String optOutFrom = ModelSwapProtocol.partnerSource(event, ModelSwapProtocol.OUTLINES_OPT_OUT);
+		if (optOutFrom != null)
+		{
+			outlineTakeover.onPartnerOptOut(optOutFrom);
+		}
+	}
+
+	@Subscribe
+	public void onProfileChanged(ProfileChanged event)
+	{
+		// Config is per profile, so the takeover starts over under the new one's settings
+		log.debug("Profile changed; restarting the outline takeover");
+		clientThread.invoke(outlineTakeover::restartForProfile);
 	}
 
 	/**
@@ -312,6 +443,8 @@ public class CustomServantsPlugin extends Plugin
 		// Before the early returns, so a detach or failed build gives the servants back even when
 		// there is no scene to recheck
 		partnerClaims.publish(canSwap(), false);
+		// Likewise, as this is where canSwap changes; free when the decision has not
+		outlineTakeover.sync();
 
 		if (client.getGameState() != GameState.LOGGED_IN)
 		{
@@ -334,6 +467,7 @@ public class CustomServantsPlugin extends Plugin
 		// Again, as processNpc may have built the model just now: claimed in the same transition.
 		// Free when nothing changed, as an unchanged set is not posted again.
 		partnerClaims.publish(canSwap(), false);
+		outlineTakeover.sync();
 	}
 
 	/**

@@ -39,8 +39,23 @@ chathead, until a supported renderer holds the renderer slot.
   the shared `npc-model-swap` plugin-message protocol. With an older build of that plugin (one that 
   does not know this plugin's decorator), one of the two plugins stands down while the other holds 
   the renderer; which one depends on the build and the start order.
-- With the `Interact Highlight` plugin on, the servant's hover and interact outline traces the
-  vanilla model, not the override.
+- **Interact Highlight**: the **Compatibility** section has a `Fix Interact Highlight outlines`
+  checkbox, off by default. The servant is swapped as it is drawn, so anything outlining it through
+  the API outlines the original model, which no longer matches what is on screen. With the
+  `Interact Highlight` plugin on and the checkbox ticked, while an override is being drawn this
+  plugin _turns off_ that plugin's own NPC **Show on hover** and **Show on interact** settings and
+  draws those outlines itself: around the override for your servant, and as usual for every other
+  NPC, using Interact Highlight's colors and border settings. Its object, ground item and player
+  highlights are untouched. Both settings are put back when this plugin stops, when the checkbox is
+  unticked or the override is set back to Default, and on the next start if the client closed while
+  they were off. The outline traces the drawn model while the clickbox still traces the original
+  one, so they can disagree at the edges. Turning either setting back on yourself in the
+  `Interact Highlight` config hands the outlines straight back to that plugin and unticks the
+  checkbox here.
+- With Retro NPC Swapper's interop build the checkbox can be on in either plugin or both: only one
+  of them draws the NPC outlines at a time, each around whichever plugin's model is on screen. If
+  another plugin with its own `Fix Interact Highlight outlines` option is running and does not
+  coordinate with these two, turn the option on in only one of them.
 
 <details>
 <summary>How it works</summary>
