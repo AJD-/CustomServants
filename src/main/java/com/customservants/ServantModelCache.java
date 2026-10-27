@@ -24,25 +24,55 @@
  */
 package com.customservants;
 
+import java.util.HashMap;
+import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Animation;
 import net.runelite.api.Client;
 import net.runelite.api.Model;
+import net.runelite.api.ModelData;
 import net.runelite.api.NPC;
+import net.runelite.api.NPCComposition;
 
 /**
  * Builds and poses the model a house servant is drawn as. Holds the current override, one lit base
  * model, the resolved chathead NPC id and an animation cache. Client thread only.
  */
 @Singleton
+@Slf4j
 public class ServantModelCache
 {
+	// NPC lighting baseline, added to the override's ambient and (x5) contrast - the values the
+	// client lights NPC models with. The no-arg ModelData.light() uses the item constants instead
+	private static final int NPC_AMBIENT = 64;
+	private static final int NPC_CONTRAST = 850;
+	private static final int LIGHT_X = -30;
+	private static final int LIGHT_Y = -50;
+	private static final int LIGHT_Z = -30;
+
+	// Width/height scale at which a composition's model is drawn at its natural size
+	private static final int UNSCALED = 128;
+
 	@Inject
 	private Client client;
 
 	private ServantOverride override = ServantOverride.DEFAULT;
+
+	// Lit and unposed; null when nothing has been built (or nothing could be)
+	private Model base;
+
+	private int chatheadNpcId = -1;
+
+	private boolean built;
+
+	// A build that produced nothing, remembered so it is not retried every frame
+	private boolean unbuildable;
+
+	// Keyed by sequence id. Null results are stored too, so an unknown id is not reloaded every frame
+	private final Map<Integer, Animation> animations = new HashMap<>();
 
 	/**
 	 * Selects the override to build. When it differs from the current one, {@link #clear()} is called
@@ -50,7 +80,10 @@ public class ServantModelCache
 	 */
 	public void setOverride(ServantOverride override)
 	{
-		// T5: clear() when the override changes
+		if (override != this.override)
+		{
+			clear();
+		}
 		this.override = override;
 	}
 
@@ -70,8 +103,113 @@ public class ServantModelCache
 	 */
 	public boolean ensureBuilt()
 	{
-		// T5
-		return false;
+		if (!override.isOverride() || unbuildable)
+		{
+			return false;
+		}
+		if (base != null)
+		{
+			return true;
+		}
+		if (built)
+		{
+			return false;
+		}
+
+		// The base compositions are used throughout - transform() would resolve a multinpc against
+		// the local player's varbits, which have nothing to do with how the servant should look
+		int[] ids = override.getNpcIds();
+		int bodyId = ServantOverride.firstMatching(ids, id ->
+		{
+			NPCComposition c = client.getNpcDefinition(id);
+			return c != null && c.getModels() != null && c.getModels().length > 0;
+		});
+		chatheadNpcId = ServantOverride.firstMatching(ids, id ->
+		{
+			NPCComposition c = client.getNpcDefinition(id);
+			return c != null && c.getChatheadModels() != null && c.getChatheadModels().length > 0;
+		});
+
+		base = bodyId == -1 ? null : build(client.getNpcDefinition(bodyId));
+		if (base == null)
+		{
+			unbuildable = true;
+			log.debug("No model could be built for servant override {} (body npc {})", override.name(), bodyId);
+		}
+
+		built = true;
+		return base != null;
+	}
+
+	/**
+	 * Merges, recolours, retextures, scales and lights a composition's models the way the client
+	 * builds an NPC's, minus any animation. Null when none of its models load.
+	 */
+	private Model build(NPCComposition c)
+	{
+		int[] modelIds = c.getModels();
+		ModelData[] parts = new ModelData[modelIds.length];
+		int found = 0;
+		for (int modelId : modelIds)
+		{
+			ModelData part = client.loadModelData(modelId);
+			if (part != null)
+			{
+				parts[found++] = part;
+			}
+		}
+
+		if (found == 0)
+		{
+			return null;
+		}
+
+		ModelData merged = found == 1 ? parts[0] : client.mergeModels(parts, found);
+		if (merged == null)
+		{
+			return null;
+		}
+
+		short[] find = c.getColorToReplace();
+		short[] repl = c.getColorToReplaceWith();
+		if (find != null && repl != null)
+		{
+			// cloneColors first, for the same reason as cloneVertices below - loadModelData hands
+			// back the client's shared arrays, and recoloring in place would repaint the cached
+			// model for everything else using it
+			merged = merged.cloneColors();
+			int n = Math.min(find.length, repl.length);
+			for (int i = 0; i < n; i++)
+			{
+				merged.recolor(find[i], repl[i]);
+			}
+		}
+
+		short[] textureFind = override.getRetextureFind();
+		short[] textureRepl = override.getRetextureReplace();
+		if (textureFind.length > 0)
+		{
+			// cloneTextures first - the face texture ids are the client's shared arrays too, and
+			// retexturing in place would change the cached model for everything else using it
+			merged = merged.cloneTextures();
+			int n = Math.min(textureFind.length, textureRepl.length);
+			for (int i = 0; i < n; i++)
+			{
+				merged.retexture(textureFind[i], textureRepl[i]);
+			}
+		}
+
+		int w = c.getWidthScale();
+		int h = c.getHeightScale();
+		if (w != UNSCALED || h != UNSCALED)
+		{
+			// cloneVertices first - loadModelData hands back the client's shared arrays, and
+			// scaling in place would resize the cached model for everything else using it
+			merged = merged.cloneVertices().scale(w, h, w);
+		}
+
+		return merged.light(NPC_AMBIENT + override.getAmbient(), NPC_CONTRAST + 5 * override.getContrast(),
+			LIGHT_X, LIGHT_Y, LIGHT_Z);
 	}
 
 	/**
@@ -79,8 +217,7 @@ public class ServantModelCache
 	 */
 	public boolean isReady()
 	{
-		// T5
-		return false;
+		return base != null;
 	}
 
 	/**
@@ -88,20 +225,38 @@ public class ServantModelCache
 	 */
 	public int chatheadNpcId()
 	{
-		// T5
-		return -1;
+		return chatheadNpcId;
 	}
 
 	/**
-	 * Render path: poses the base model with the servant's current animation state. The returned model
-	 * is shared and only valid until the next call.
+	 * Render path: poses the base model with the servant's current animation state. One servant
+	 * lookup and one {@code applyTransformations} call per frame.
+	 *
+	 * <p>The returned model is shared and is invalidated by the next applyTransformations call,
+	 * including the client's own, so it has to be consumed before anything else runs - the draw
+	 * callback hands it straight to the renderer. Must be called on the client thread.
 	 *
 	 * @return the posed model, or null to draw the vanilla model
 	 */
 	public Model pose(NPC npc)
 	{
-		// T5
-		return null;
+		if (base == null)
+		{
+			return null;
+		}
+		ServantIds.Servant s = ServantIds.get(npc.getId());
+		if (s == null)
+		{
+			return null;
+		}
+
+		PosePlan p = plan(s.getRig(), override.getRig(), npc.getAnimation(), npc.getPoseAnimation(),
+			override.getStandAnimation(), override.getWalkAnimation());
+		Animation action = animation(p.getAction());
+		Animation pose = animation(p.getPose());
+		int af = p.isUseNpcActionFrame() ? clampFrame(action, npc.getAnimationFrame()) : 0;
+		int pf = p.isUseNpcPoseFrame() ? clampFrame(pose, npc.getPoseAnimationFrame()) : 0;
+		return client.applyTransformations(base, action, af, pose, pf);
 	}
 
 	/**
@@ -109,7 +264,32 @@ public class ServantModelCache
 	 */
 	public void clear()
 	{
-		// T5
+		base = null;
+		chatheadNpcId = -1;
+		built = false;
+		unbuildable = false;
+		animations.clear();
+	}
+
+	/**
+	 * Resolves a sequence id, caching the result. Returns null for a negative or unknown id.
+	 */
+	Animation animation(int id)
+	{
+		if (id < 0)
+		{
+			return null;
+		}
+
+		// computeIfAbsent is avoided so a null from loadAnimation is not retried every frame
+		if (animations.containsKey(id))
+		{
+			return animations.get(id);
+		}
+
+		Animation animation = client.loadAnimation(id);
+		animations.put(id, animation);
+		return animation;
 	}
 
 	/**
@@ -118,8 +298,7 @@ public class ServantModelCache
 	 */
 	public static int clampFrame(Animation animation, int frame)
 	{
-		// T5
-		return -1;
+		return animation == null || frame < 0 || frame >= animation.getNumFrames() ? 0 : frame;
 	}
 
 	/**
@@ -134,8 +313,22 @@ public class ServantModelCache
 	 */
 	public static PosePlan plan(Rig servantRig, Rig overrideRig, int npcAction, int npcPose, int overrideStand, int overrideWalk)
 	{
-		// T5
-		return null;
+		if (servantRig == overrideRig)
+		{
+			return new PosePlan(npcAction, npcPose, true, true);
+		}
+
+		if (overrideStand == -1)
+		{
+			return new PosePlan(-1, -1, false, false);
+		}
+
+		int effectiveWalk = overrideWalk != -1 ? overrideWalk : overrideStand;
+		if (npcPose == overrideStand || npcPose == effectiveWalk)
+		{
+			return new PosePlan(-1, npcPose, false, true);
+		}
+		return new PosePlan(-1, overrideStand, false, false);
 	}
 
 	/**
