@@ -27,19 +27,49 @@ package com.customservants;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.ConfigSection;
 
 @ConfigGroup(CustomServantsConfig.GROUP)
 public interface CustomServantsConfig extends Config
 {
 	String GROUP = "custom-servants";
 
+	String SERVANT_OVERRIDE = "servantOverride";
+	String OVERRIDE_INTERACT_HIGHLIGHT = "overrideInteractHighlight";
+
 	@ConfigItem(
-		keyName = "servantOverride",
+		keyName = SERVANT_OVERRIDE,
 		name = "Servant override",
-		description = "Draws your house servant as another NPC, with that NPC's chathead in dialogue. Needs the GPU plugin or 117 HD."
+		description = "Draws your house servant as another NPC, with that NPC's chathead in dialogue. Needs the GPU plugin or 117 HD.",
+		position = 0
 	)
 	default ServantOverride servantOverride()
 	{
 		return ServantOverride.DEFAULT;
+	}
+
+	@ConfigSection(
+		name = "Compatibility",
+		description = "Settings for working alongside other plugins",
+		position = 1,
+		closedByDefault = true
+	)
+	String compatibilitySection = "compatibilitySection";
+
+	@ConfigItem(
+		keyName = OVERRIDE_INTERACT_HIGHLIGHT,
+		name = "Fix Interact Highlight outlines",
+		description = "<html><body style='width:170px'>Draw the Interact Highlight plugin's NPC "
+			+ "outlines around your servant's override instead of the original model.<br><br>While "
+			+ "this is on and an override is being drawn, Interact Highlight's own <b>NPCs: Show on "
+			+ "hover</b> and <b>Show on interact</b> are turned off and this plugin draws those "
+			+ "outlines in their place, using that plugin's own colors and border settings. Both are "
+			+ "turned back on when this plugin stops.</body></html>",
+		section = compatibilitySection,
+		position = 1
+	)
+	default boolean overrideInteractHighlight()
+	{
+		return false;
 	}
 }
