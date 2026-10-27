@@ -37,8 +37,9 @@ chathead, until a supported renderer holds the renderer slot.
   order they start in, once those plugins include their `feature/custom-servants-interop` change.
   With it, Retro NPC Swapper also leaves the servant NPCs Custom Servants has claimed alone, through
   the shared `npc-model-swap` plugin-message protocol; for Custom NPC Models the change only covers
-  sharing the renderer. Older builds of either plugin stand down while Custom Servants holds the
-  renderer, or Custom Servants stands down if they attached first.
+  sharing the renderer. With an older build of either plugin (one that does not know this plugin's decorator), one of
+  the two plugins stands down while the other holds the renderer; which one depends on the build and
+  the start order.
 - A **Custom NPC Models** pack that binds a servant NPC competes with this plugin for that servant.
   Whichever plugin attached to the renderer first wins.
 - With the `Interact Highlight` plugin on, the servant's hover and interact outline traces the

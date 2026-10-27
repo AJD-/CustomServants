@@ -98,7 +98,9 @@ public class CustomServantsPlugin extends Plugin
 		log.info("Custom Servants started");
 
 		// Before the first attach(), which throws without it
-		attachment.setSubstitutor(modelCache::pose);
+		// A decorator buried under one we cannot unwrap keeps calling the substitutor after attach() dropped
+		// the wrapper; this keeps body, animations, chathead and claims on the same isAttached() predicate
+		attachment.setSubstitutor(npc -> attachment.isAttached() ? modelCache.pose(npc) : null);
 		chatheadSwapper.start(this::canSwap);
 		clientThread.invoke(() ->
 		{
@@ -131,8 +133,22 @@ public class CustomServantsPlugin extends Plugin
 			try
 			{
 				// A dialogue left open shows the servant's own head again
-				chatheadSwapper.stop();
-				resetAllNpcs();
+				try
+				{
+					chatheadSwapper.stop();
+				}
+				catch (RuntimeException e)
+				{
+					log.debug("Stopping the chathead swapper failed", e);
+				}
+				try
+				{
+					resetAllNpcs();
+				}
+				catch (RuntimeException e)
+				{
+					log.debug("Resetting the servants failed", e);
+				}
 			}
 			finally
 			{

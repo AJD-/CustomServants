@@ -161,7 +161,8 @@ class RendererAttachment
 		else if (wrapper != null)
 		{
 			// Something else holds the slot. If it wrapped our wrapper - Custom NPC Models and Retro
-			// NPC Swapper do - our decorator stays in its chain, still forwarding, and the next
+			// NPC Swapper do - our decorator stays in its chain and keeps calling the substitutor until
+			// the substitutor returns null (gated on isAttached()) and the model cache is cleared; the next
 			// attach() picks it back up.
 			log.debug("Draw callbacks slot no longer ours at detach; leaving it untouched");
 		}

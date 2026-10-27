@@ -26,6 +26,7 @@ package com.customservants;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import net.runelite.api.NPC;
+import net.runelite.api.gameval.AnimationID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import org.junit.Before;
@@ -44,8 +45,8 @@ import static org.mockito.Mockito.when;
  */
 public class CustomServantsPluginLogicTest
 {
-	private static final int VANILLA_IDLE = 808;
-	private static final int VANILLA_WALK = 819;
+	private static final int VANILLA_IDLE = AnimationID.HUMAN_READY;
+	private static final int VANILLA_WALK = AnimationID.HUMAN_WALK_F;
 	private static final ServantOverride OV = ServantOverride.VYRELORD_HUMAN;
 
 	private CustomServantsPlugin plugin;

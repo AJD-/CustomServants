@@ -24,6 +24,7 @@
  */
 package com.customservants;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -52,6 +53,7 @@ public final class ServantIds
 	}
 
 	private static final Map<Integer, Servant> SERVANTS;
+	private static final int[] IDS;
 
 	static
 	{
@@ -78,6 +80,7 @@ public final class ServantIds
 			NpcID.POH_SERVANT_DEMON_CUTSCENE,
 			NpcID.POH_SERVANT_DEMON_LEAGUES_6);
 		SERVANTS = Collections.unmodifiableMap(servants);
+		IDS = servants.keySet().stream().mapToInt(Integer::intValue).sorted().toArray();
 	}
 
 	private ServantIds()
@@ -97,12 +100,13 @@ public final class ServantIds
 	 */
 	public static Servant get(int npcId)
 	{
-		return SERVANTS.get(npcId);
+		// No boxing for the non-servant NPCs this is asked about every frame
+		return isServant(npcId) ? SERVANTS.get(npcId) : null;
 	}
 
 	public static boolean isServant(int npcId)
 	{
-		return SERVANTS.containsKey(npcId);
+		return Arrays.binarySearch(IDS, npcId) >= 0;
 	}
 
 	/**
