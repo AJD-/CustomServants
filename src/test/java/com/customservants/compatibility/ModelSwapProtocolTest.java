@@ -31,22 +31,28 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import net.runelite.api.Model;
+import net.runelite.api.NPC;
 import net.runelite.client.events.PluginMessage;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 
 /**
- * The claims half of the protocol shared with Retro NPC Swapper, ported from its own test so the
- * copies stay string-compatible.
+ * The protocol shared with Retro NPC Swapper and the sibling plugin, ported from their own tests so
+ * the copies stay string-compatible.
  */
 public class ModelSwapProtocolTest
 {
 	private static final String SERVANTS = ModelSwapProtocol.SOURCE_CUSTOM_SERVANTS;
 	private static final String RETRO = ModelSwapProtocol.SOURCE_RETRO_NPC_SWAPPER;
+	private static final String CUSTOM = ModelSwapProtocol.SOURCE_CUSTOM_NPC_MODELS;
 
 	/** A message of this protocol built by hand, as a partner's copy would send it. */
 	private static PluginMessage message(String name, Object version, String source)
@@ -72,12 +78,16 @@ public class ModelSwapProtocolTest
 		assertEquals(1, ModelSwapProtocol.VERSION);
 		assertEquals("claims", ModelSwapProtocol.CLAIMS);
 		assertEquals("modelSyncReq", ModelSwapProtocol.SYN);
+		assertEquals("outlines", ModelSwapProtocol.OUTLINES);
+		assertEquals("outlinesOptOut", ModelSwapProtocol.OUTLINES_OPT_OUT);
 		assertEquals("custom-npc-models", ModelSwapProtocol.SOURCE_CUSTOM_NPC_MODELS);
 		assertEquals("retro-npc-swapper", ModelSwapProtocol.SOURCE_RETRO_NPC_SWAPPER);
 		assertEquals("custom-servants", ModelSwapProtocol.SOURCE_CUSTOM_SERVANTS);
 		assertEquals("version", ModelSwapProtocol.KEY_VERSION);
 		assertEquals("source", ModelSwapProtocol.KEY_SOURCE);
 		assertEquals("npcIds", ModelSwapProtocol.KEY_NPC_IDS);
+		assertEquals("owning", ModelSwapProtocol.KEY_OWNING);
+		assertEquals("poser", ModelSwapProtocol.KEY_POSER);
 	}
 
 	@Test
@@ -161,7 +171,7 @@ public class ModelSwapProtocolTest
 	@Test
 	public void testAnotherNameIsNotClaims()
 	{
-		PluginMessage message = new PluginMessage(ModelSwapProtocol.NAMESPACE, "outlines", claimsData());
+		PluginMessage message = new PluginMessage(ModelSwapProtocol.NAMESPACE, ModelSwapProtocol.OUTLINES, claimsData());
 		assertNull(ModelSwapProtocol.readClaims(message, SERVANTS));
 	}
 
@@ -236,5 +246,164 @@ public class ModelSwapProtocolTest
 		}
 		// A JDK collection, loaded by the bootstrap classloader every plugin's classloader sees
 		assertNull(ids.getClass().getClassLoader());
+
+		Function<NPC, Model> poser = npc -> null;
+		Map<String, Object> outlines = ModelSwapProtocol.outlinesMessage(RETRO, true, poser).getData();
+		assertEquals(4, outlines.size());
+		assertEquals(Integer.class, outlines.get(ModelSwapProtocol.KEY_VERSION).getClass());
+		assertEquals(String.class, outlines.get(ModelSwapProtocol.KEY_SOURCE).getClass());
+		assertEquals(Boolean.class, outlines.get(ModelSwapProtocol.KEY_OWNING).getClass());
+		// A JDK interface; the lambda's own class is the sender's, which is why it is only ever called through it
+		assertTrue(outlines.get(ModelSwapProtocol.KEY_POSER) instanceof Function);
+		for (Object value : outlines.values())
+		{
+			assertTrue(value instanceof Integer || value instanceof String || value instanceof Boolean
+				|| value instanceof Function);
+		}
+	}
+
+	@Test
+	public void testOutlinesRoundTripFromEachPartner()
+	{
+		for (String partner : ModelSwapProtocol.PARTNERS)
+		{
+			Function<NPC, Model> poser = npc -> null;
+			ModelSwapProtocol.Outlines outlines = ModelSwapProtocol.readOutlines(
+				ModelSwapProtocol.outlinesMessage(partner, true, poser), partner);
+			assertNotNull(partner, outlines);
+			assertTrue(partner, outlines.isOwning());
+			assertSame(partner, poser, outlines.getPoser());
+
+			outlines = ModelSwapProtocol.readOutlines(ModelSwapProtocol.outlinesMessage(partner, false, poser), partner);
+			assertNotNull(partner, outlines);
+			assertFalse(partner, outlines.isOwning());
+			assertSame(partner, poser, outlines.getPoser());
+		}
+		assertEquals(Arrays.asList(RETRO, CUSTOM), ModelSwapProtocol.PARTNERS);
+	}
+
+	@Test
+	public void testOutlinesWithoutAPoserWithdrawIt()
+	{
+		PluginMessage message = ModelSwapProtocol.outlinesMessage(CUSTOM, false, null);
+		assertFalse(message.getData().containsKey(ModelSwapProtocol.KEY_POSER));
+
+		ModelSwapProtocol.Outlines outlines = ModelSwapProtocol.readOutlines(message, CUSTOM);
+		assertNotNull(outlines);
+		assertFalse(outlines.isOwning());
+		assertNull(outlines.getPoser());
+	}
+
+	@Test
+	public void testAPoserThatIsNotAFunctionIsNotRead()
+	{
+		Map<String, Object> data = new HashMap<>(ModelSwapProtocol.outlinesMessage(RETRO, true, null).getData());
+		data.put(ModelSwapProtocol.KEY_POSER, "poser");
+		ModelSwapProtocol.Outlines outlines = ModelSwapProtocol.readOutlines(
+			new PluginMessage(ModelSwapProtocol.NAMESPACE, ModelSwapProtocol.OUTLINES, data), RETRO);
+		assertNotNull(outlines);
+		assertTrue(outlines.isOwning());
+		assertNull(outlines.getPoser());
+	}
+
+	@Test
+	public void testOutlinesFromAnotherSourceAreNotThePartners()
+	{
+		PluginMessage message = ModelSwapProtocol.outlinesMessage(CUSTOM, true, npc -> null);
+		assertNull(ModelSwapProtocol.readOutlines(message, RETRO));
+		assertNull(ModelSwapProtocol.readOutlines(message, SERVANTS));
+		assertNull(ModelSwapProtocol.readOutlines(message, null));
+
+		PluginMessage ours = ModelSwapProtocol.outlinesMessage(SERVANTS, true, npc -> null);
+		assertNull(ModelSwapProtocol.readOutlines(ours, RETRO));
+		assertNull(ModelSwapProtocol.readOutlines(ours, CUSTOM));
+	}
+
+	@Test
+	public void testOtherMessagesAreNotOutlines()
+	{
+		assertNull(ModelSwapProtocol.readOutlines(null, RETRO));
+		assertNull(ModelSwapProtocol.readOutlines(ModelSwapProtocol.synMessage(RETRO), RETRO));
+		assertNull(ModelSwapProtocol.readOutlines(ModelSwapProtocol.optOutMessage(RETRO), RETRO));
+		assertNull(ModelSwapProtocol.readOutlines(new PluginMessage(ModelSwapProtocol.NAMESPACE, ModelSwapProtocol.OUTLINES), RETRO));
+
+		Map<String, Object> data = new HashMap<>(ModelSwapProtocol.outlinesMessage(RETRO, true, null).getData());
+		assertNull(ModelSwapProtocol.readOutlines(new PluginMessage(ModelSwapProtocol.NAMESPACE, ModelSwapProtocol.CLAIMS, data), RETRO));
+		assertNull(ModelSwapProtocol.readOutlines(new PluginMessage("some-plugin", ModelSwapProtocol.OUTLINES, data), RETRO));
+
+		data.put(ModelSwapProtocol.KEY_OWNING, "true");
+		assertNull(ModelSwapProtocol.readOutlines(new PluginMessage(ModelSwapProtocol.NAMESPACE, ModelSwapProtocol.OUTLINES, data), RETRO));
+
+		data.remove(ModelSwapProtocol.KEY_OWNING);
+		assertNull(ModelSwapProtocol.readOutlines(new PluginMessage(ModelSwapProtocol.NAMESPACE, ModelSwapProtocol.OUTLINES, data), RETRO));
+	}
+
+	@Test
+	public void testOutlinesOfAnotherVersionAreIgnored()
+	{
+		Map<String, Object> data = new HashMap<>(ModelSwapProtocol.outlinesMessage(RETRO, true, null).getData());
+		data.put(ModelSwapProtocol.KEY_VERSION, ModelSwapProtocol.VERSION + 1);
+		assertNull(ModelSwapProtocol.readOutlines(new PluginMessage(ModelSwapProtocol.NAMESPACE, ModelSwapProtocol.OUTLINES, data), RETRO));
+	}
+
+	@Test
+	public void testPartnerSourceNamesEachPartner()
+	{
+		for (String partner : ModelSwapProtocol.PARTNERS)
+		{
+			assertEquals(partner, ModelSwapProtocol.partnerSource(
+				ModelSwapProtocol.outlinesMessage(partner, true, null), ModelSwapProtocol.OUTLINES));
+			assertEquals(partner, ModelSwapProtocol.partnerSource(
+				ModelSwapProtocol.optOutMessage(partner), ModelSwapProtocol.OUTLINES_OPT_OUT));
+			assertEquals(partner, ModelSwapProtocol.partnerSource(
+				ModelSwapProtocol.synMessage(partner), ModelSwapProtocol.SYN));
+		}
+	}
+
+	@Test
+	public void testPartnerSourceIgnoresEveryoneElse()
+	{
+		String outlines = ModelSwapProtocol.OUTLINES;
+
+		// Ourselves, a stranger, and no source at all
+		assertNull(ModelSwapProtocol.partnerSource(ModelSwapProtocol.outlinesMessage(SERVANTS, true, null), outlines));
+		assertNull(ModelSwapProtocol.partnerSource(ModelSwapProtocol.outlinesMessage("some-plugin", true, null), outlines));
+		assertNull(ModelSwapProtocol.partnerSource(message(outlines, ModelSwapProtocol.VERSION, null), outlines));
+
+		// A source that is not a string must not throw
+		Map<String, Object> data = new HashMap<>(ModelSwapProtocol.outlinesMessage(RETRO, true, null).getData());
+		data.put(ModelSwapProtocol.KEY_SOURCE, 1);
+		assertNull(ModelSwapProtocol.partnerSource(new PluginMessage(ModelSwapProtocol.NAMESPACE, outlines, data), outlines));
+
+		// Another version, another name, another namespace, or not a message at all
+		assertNull(ModelSwapProtocol.partnerSource(message(outlines, ModelSwapProtocol.VERSION + 1, RETRO), outlines));
+		assertNull(ModelSwapProtocol.partnerSource(message(outlines, String.valueOf(ModelSwapProtocol.VERSION), RETRO), outlines));
+		assertNull(ModelSwapProtocol.partnerSource(ModelSwapProtocol.optOutMessage(RETRO), outlines));
+		assertNull(ModelSwapProtocol.partnerSource(ModelSwapProtocol.outlinesMessage(RETRO, true, null), ModelSwapProtocol.SYN));
+		assertNull(ModelSwapProtocol.partnerSource(new PluginMessage("some-plugin", outlines,
+			new HashMap<>(ModelSwapProtocol.outlinesMessage(RETRO, true, null).getData())), outlines));
+		assertNull(ModelSwapProtocol.partnerSource(new PluginMessage(ModelSwapProtocol.NAMESPACE, outlines), outlines));
+		assertNull(ModelSwapProtocol.partnerSource(null, outlines));
+	}
+
+	@Test
+	public void testOptOutAndSyncReqAreRecognisedFromEachPartner()
+	{
+		for (String partner : ModelSwapProtocol.PARTNERS)
+		{
+			assertTrue(partner, ModelSwapProtocol.isOptOut(ModelSwapProtocol.optOutMessage(partner), partner));
+			assertTrue(partner, ModelSwapProtocol.isSyncReq(ModelSwapProtocol.synMessage(partner), partner));
+
+			// Neither is the other, and neither is ours
+			assertFalse(partner, ModelSwapProtocol.isOptOut(ModelSwapProtocol.synMessage(partner), partner));
+			assertFalse(partner, ModelSwapProtocol.isSyncReq(ModelSwapProtocol.optOutMessage(partner), partner));
+			assertFalse(partner, ModelSwapProtocol.isOptOut(ModelSwapProtocol.optOutMessage(SERVANTS), partner));
+			assertFalse(partner, ModelSwapProtocol.isSyncReq(ModelSwapProtocol.synMessage(SERVANTS), partner));
+		}
+
+		assertFalse(ModelSwapProtocol.isOptOut(ModelSwapProtocol.optOutMessage(RETRO), CUSTOM));
+		assertFalse(ModelSwapProtocol.isOptOut(ModelSwapProtocol.optOutMessage(RETRO), null));
+		assertFalse(ModelSwapProtocol.isOptOut(null, RETRO));
+		assertFalse(ModelSwapProtocol.isOptOut(message(ModelSwapProtocol.OUTLINES_OPT_OUT, ModelSwapProtocol.VERSION + 1, RETRO), RETRO));
 	}
 }
