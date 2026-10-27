@@ -310,6 +310,10 @@ public class CustomServantsPlugin extends Plugin
 				processNpc(npc);
 			}
 		}
+
+		// Again, as processNpc may have built the model just now: claimed in the same transition.
+		// Free when nothing changed, as an unchanged set is not posted again.
+		partnerClaims.publish(canSwap(), false);
 	}
 
 	/**
