@@ -44,10 +44,6 @@ import net.runelite.client.plugins.PluginManager;
  * referenced, as they are loaded by other classloaders and may not be installed at all. Checked
  * only on takeover transitions, not per frame, so nothing is cached: a Hub install or update makes
  * a new plugin instance.
- * <p>
- * It also reads whether Retro NPC Swapper's own {@code Fix Interact Highlight outlines} option is
- * ticked while it runs ({@link #isRetroOutlineFixEnabled}). Retro's fix also outlines scenery
- * objects, which this plugin cannot draw, so this plugin yields the outlines to it then.
  */
 @Singleton
 public class PartnerStashProbe
@@ -55,12 +51,9 @@ public class PartnerStashProbe
 	/** Retro NPC Swapper's plugin class name. */
 	static final String RETRO_PLUGIN_CLASS = "com.retronpcswapper.RetroNpcSwapperPlugin";
 
-	// These two mirror RetroNpcConfig.GROUP and RetroNpcConfig.OVERRIDE_INTERACT_HIGHLIGHT in Retro
-	// NPC Swapper, which cannot be referenced from here
+	// Mirrors RetroNpcConfig.GROUP in Retro NPC Swapper, which cannot be referenced from here
 	/** Retro NPC Swapper's config group. */
-	public static final String RETRO_CONFIG_GROUP = "retronpcswapper";
-	/** The key of Retro NPC Swapper's own {@code Fix Interact Highlight outlines} option. */
-	public static final String RETRO_OVERRIDE_KEY = "overrideInteractHighlight";
+	static final String RETRO_CONFIG_GROUP = "retronpcswapper";
 
 	/** Each partner plugin's class name, mapped to the config group it keeps its stash in. */
 	static final Map<String, String> PARTNER_STASH_GROUPS = Map.of(
@@ -84,15 +77,6 @@ public class PartnerStashProbe
 	public boolean isPartnerSuppressing()
 	{
 		return anySuppressing(PARTNER_STASH_GROUPS, this::isActiveByClassName, configManager::getConfiguration);
-	}
-
-	/**
-	 * Whether Retro NPC Swapper is running with its own {@code Fix Interact Highlight outlines}
-	 * option ticked, so it, not this plugin, should draw the outlines.
-	 */
-	public boolean isRetroOutlineFixEnabled()
-	{
-		return retroOutlineFixEnabled(this::isActiveByClassName, configManager::getConfiguration);
 	}
 
 	/** Whether the plugin of class {@code className} is loaded and running. */
@@ -124,15 +108,5 @@ public class PartnerStashProbe
 			}
 		}
 		return false;
-	}
-
-	/**
-	 * Whether {@code activeByClass} says Retro NPC Swapper is running and its group holds
-	 * {@code "true"} under {@link #RETRO_OVERRIDE_KEY} according to {@code getConfig(group, key)}.
-	 */
-	static boolean retroOutlineFixEnabled(Predicate<String> activeByClass, BiFunction<String, String, String> getConfig)
-	{
-		return activeByClass.test(RETRO_PLUGIN_CLASS)
-			&& "true".equals(getConfig.apply(RETRO_CONFIG_GROUP, RETRO_OVERRIDE_KEY));
 	}
 }

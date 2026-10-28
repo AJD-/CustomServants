@@ -55,10 +55,10 @@ chathead, until a supported renderer holds the renderer slot.
 - With Retro NPC Swapper's interop build the checkbox can be on in either plugin or both: only one
   of them draws the NPC outlines at a time, each around whichever plugin's model is on screen. If
   another plugin with its own `Fix Interact Highlight outlines` option is running and does not
-  coordinate with these two, turn the option on in only one of those plugins. If Retro NPC Swapper
-  is running with its own `Fix Interact Highlight outlines` option ticked, it draws the outlines
-  instead (including its scenery outlines), and this plugin's checkbox does nothing until that
-  option is unticked.
+  coordinate with these two, turn the option on in only one of those plugins. Whichever plugin takes
+  the outlines first keeps them until it lets go. Retro NPC Swapper's option also fixes its scenery
+  outlines, which this plugin cannot draw, so if you want it to draw the outlines, untick the
+  checkbox here.
 
 <details>
 <summary>How it works</summary>

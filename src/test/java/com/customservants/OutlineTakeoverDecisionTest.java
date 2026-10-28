@@ -36,44 +36,31 @@ public class OutlineTakeoverDecisionTest
 	@Test
 	public void testTakesOverWhenWantedAndNoPartnerDoes()
 	{
-		assertTrue(OutlineTakeover.shouldTakeOver(true, false, true, false, false));
+		assertTrue(OutlineTakeover.shouldTakeOver(true, false, true, false));
 	}
 
 	@Test
 	public void testLeavesTheOutlinesToAPartnerWhenItHasThem()
 	{
-		assertFalse(OutlineTakeover.shouldTakeOver(true, false, true, true, false));
+		assertFalse(OutlineTakeover.shouldTakeOver(true, false, true, true));
 	}
 
 	@Test
 	public void testKeepsTheOutlinesItAlreadyHasEvenIfAPartnerNowOwns()
 	{
-		assertTrue(OutlineTakeover.shouldTakeOver(true, true, true, true, false));
+		assertTrue(OutlineTakeover.shouldTakeOver(true, true, true, true));
 	}
 
 	@Test
 	public void testWaitsForTheHandshake()
 	{
-		assertFalse(OutlineTakeover.shouldTakeOver(true, false, false, false, false));
+		assertFalse(OutlineTakeover.shouldTakeOver(true, false, false, false));
 	}
 
 	@Test
 	public void testLetsGoWhenNoLongerWanted()
 	{
-		assertFalse(OutlineTakeover.shouldTakeOver(false, true, true, false, false));
-		assertFalse(OutlineTakeover.shouldTakeOver(false, false, true, false, false));
-	}
-
-	@Test
-	public void testYieldsToAPartnerEvenWhenItAlreadyHasTheOutlines()
-	{
-		assertFalse(OutlineTakeover.shouldTakeOver(true, true, true, false, true));
-		assertFalse(OutlineTakeover.shouldTakeOver(true, true, true, true, true));
-	}
-
-	@Test
-	public void testYieldBeatsAPartnerNotOwning()
-	{
-		assertFalse(OutlineTakeover.shouldTakeOver(true, false, true, false, true));
+		assertFalse(OutlineTakeover.shouldTakeOver(false, true, true, false));
+		assertFalse(OutlineTakeover.shouldTakeOver(false, false, true, false));
 	}
 }
