@@ -313,11 +313,8 @@ public class InteractHighlightCompatTest
 	}
 
 	@Test
-	public void stashKeysAreRecognised()
+	public void stashKeyIsPrefixed()
 	{
 		assertEquals("interactHighlightStash_npcShowHover", InteractHighlightCompat.stashKey("npcShowHover"));
-		assertTrue(InteractHighlightCompat.isStashKey(InteractHighlightCompat.stashKey("npcShowInteract")));
-		assertFalse(InteractHighlightCompat.isStashKey(CustomServantsConfig.OVERRIDE_INTERACT_HIGHLIGHT));
-		assertFalse(InteractHighlightCompat.isStashKey(null));
 	}
 }

@@ -301,11 +301,6 @@ public class InteractHighlightCompat
 		return profile == null ? -1 : profile.getId();
 	}
 
-	public static boolean isStashKey(String key)
-	{
-		return key != null && key.startsWith(STASH_PREFIX);
-	}
-
 	/** The key in this plugin's own config group that Interact Highlight's {@code key} is stashed under. */
 	public static String stashKey(String key)
 	{
