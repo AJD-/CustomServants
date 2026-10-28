@@ -106,7 +106,10 @@ public class InteractHighlightCompat
 	 */
 	boolean npcShowHover()
 	{
-		return wanted(SHOW_HOVER, config().npcShowHover());
+		// The live config is read only when the stash does not answer: the overlay asks every frame
+		// while suppressing, when the live value is ours
+		String stashed = suppressedStash(SHOW_HOVER);
+		return stashed == null ? config().npcShowHover() : wanted(stashed);
 	}
 
 	/**
@@ -114,22 +117,19 @@ public class InteractHighlightCompat
 	 */
 	boolean npcShowInteract()
 	{
-		return wanted(SHOW_INTERACT, config().npcShowInteract());
+		String stashed = suppressedStash(SHOW_INTERACT);
+		return stashed == null ? config().npcShowInteract() : wanted(stashed);
 	}
 
-	private boolean wanted(String key, boolean live)
+	/** What is stashed for {@code key} while suppressing, or null when not suppressing or nothing is. */
+	private String suppressedStash(String key)
 	{
-		if (!suppressing)
-		{
-			return live;
-		}
+		return suppressing ? stashed(key) : null;
+	}
 
-		String stashed = stashed(key);
-		if (stashed == null)
-		{
-			return live;
-		}
-
+	/** What the user chose, by the value stashed for a key. */
+	private static boolean wanted(String stashed)
+	{
 		// Nothing was saved for the key before we wrote to it, so the plugin's own default stands
 		return STASH_UNSET.equals(stashed) || Boolean.parseBoolean(stashed);
 	}

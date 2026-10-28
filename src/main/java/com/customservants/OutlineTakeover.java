@@ -240,7 +240,10 @@ class OutlineTakeover
 	 */
 	void finishHandshake()
 	{
-		log.debug("Handshake done; {} the outlines", isPartnerOwning() ? "a partner draws" : "no partner draws");
+		if (log.isDebugEnabled())
+		{
+			log.debug("Handshake done; {} the outlines", isPartnerOwning() ? "a partner draws" : "no partner draws");
+		}
 		partnerOutlines.setHandshakeDone();
 		publish(true);
 		sync();

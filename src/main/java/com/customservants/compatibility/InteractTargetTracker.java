@@ -136,7 +136,8 @@ public class InteractTargetTracker
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
-		if (client.getTickCount() > clickTick && client.getLocalDestinationLocation() == null)
+		// Tracking first: the destination lookup allocates, and there is nothing to end without it
+		if (interactedActor != null && client.getTickCount() > clickTick && client.getLocalDestinationLocation() == null)
 		{
 			// The destination has been reached, so the interaction we were tracking is over
 			interactedActor = null;

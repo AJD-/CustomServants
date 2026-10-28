@@ -278,6 +278,11 @@ public class CustomServantsPlugin extends Plugin
 	@Subscribe
 	public void onNpcDespawned(NpcDespawned event)
 	{
+		// Most despawns are of NPCs never overridden: skip boxing the index for them
+		if (originalStates.isEmpty())
+		{
+			return;
+		}
 		// Nothing to restore onto: the NPC is gone, and its index may be reused
 		if (originalStates.remove(event.getNpc().getIndex()) != null)
 		{
@@ -499,6 +504,11 @@ public class CustomServantsPlugin extends Plugin
 	/** Puts back the animations snapshotted for this NPC's index, if any. Client thread only. */
 	void resetNpc(NPC npc)
 	{
+		// Called for every NPC that spawns or changes: skip boxing the index when nothing is held
+		if (originalStates.isEmpty())
+		{
+			return;
+		}
 		OriginalNpcState st = originalStates.remove(npc.getIndex());
 		if (st != null)
 		{

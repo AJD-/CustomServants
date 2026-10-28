@@ -85,19 +85,21 @@ public class ServantOutliner
 	 */
 	boolean drawOutline(NPC npc, int outlineWidth, Color color, int feather)
 	{
-		LocalPoint lp = npc.getLocalLocation();
-		WorldView wv = npc.getWorldView();
-		if (lp == null || wv == null)
-		{
-			return false;
-		}
-
+		// Posed first, so an NPC nobody swaps, the usual case, costs no location lookup. Nothing
+		// below runs applyTransformations, so the shared posed model survives to the draw
 		Model posed = modelCache.pose(npc);
 		if (posed == null)
 		{
 			posed = partnerOutlines.pose(npc);
 		}
 		if (posed == null)
+		{
+			return false;
+		}
+
+		LocalPoint lp = npc.getLocalLocation();
+		WorldView wv = npc.getWorldView();
+		if (lp == null || wv == null)
 		{
 			return false;
 		}

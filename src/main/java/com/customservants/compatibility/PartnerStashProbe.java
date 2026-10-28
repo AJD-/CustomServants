@@ -108,7 +108,8 @@ public class PartnerStashProbe
 	{
 		for (Map.Entry<String, String> entry : groupsByClass.entrySet())
 		{
-			if (activeByClass.test(entry.getKey()) && getConfig.apply(entry.getValue(), STASH_KEY) != null)
+			// The config read first: it is a map lookup, where the activity check scans the plugin list
+			if (getConfig.apply(entry.getValue(), STASH_KEY) != null && activeByClass.test(entry.getKey()))
 			{
 				return true;
 			}
