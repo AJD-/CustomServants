@@ -176,6 +176,14 @@ public enum ServantOverride
 		return this != DEFAULT;
 	}
 
+	/**
+	 * @return the walk sequence id, or the stand's when the walk is unknown
+	 */
+	public int getEffectiveWalk()
+	{
+		return walkAnimation != -1 ? walkAnimation : standAnimation;
+	}
+
 	@Override
 	public String toString()
 	{

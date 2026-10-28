@@ -123,7 +123,6 @@ class RendererAttachment
 		if (buried != null)
 		{
 			wrapper = buried;
-			declinedHost = null;
 			log.debug("Re-adopted servant draw callbacks beneath {}", current.getClass().getName());
 		}
 		else if (isSupportedHost(current, findGpuPlugin()))
@@ -131,7 +130,6 @@ class RendererAttachment
 			ServantDrawCallbacks callbacks = new ServantDrawCallbacks(current, substitutor);
 			client.setDrawCallbacks(callbacks);
 			wrapper = callbacks;
-			declinedHost = null;
 			log.debug("Attached servant draw callbacks over {}", current.getClass().getName());
 		}
 		else if (current != null && !current.getClass().getName().equals(declinedHost))
@@ -141,21 +139,30 @@ class RendererAttachment
 			log.debug("Draw callbacks held by unsupported renderer {}; skipping model swap", declinedHost);
 		}
 
-		boolean attached = wrapper != null;
-		return attached != wasAttached;
+		if (isAttached())
+		{
+			// So the next renderer declined is logged, even one declined before
+			declinedHost = null;
+		}
+		return isAttached() != wasAttached;
 	}
 
 	/** Hands the draw callbacks slot back to the renderer. */
 	void detach()
 	{
-		if (wrapper != null && client.getDrawCallbacks() == wrapper)
+		if (wrapper == null)
+		{
+			return;
+		}
+
+		if (client.getDrawCallbacks() == wrapper)
 		{
 			// Restore the delegate, never null - nulling the slot would leave the renderer running
 			// with no callbacks registered
 			client.setDrawCallbacks(wrapper.get());
 			log.debug("Detached servant draw callbacks");
 		}
-		else if (wrapper != null)
+		else
 		{
 			// Something else holds the slot. If it wrapped our wrapper - Retro NPC Swapper and its
 			// sibling plugin do - our decorator stays in its chain and keeps calling the substitutor until

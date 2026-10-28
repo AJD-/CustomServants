@@ -45,7 +45,7 @@ import net.runelite.client.eventbus.Subscribe;
  * Shows the override NPC's chathead in dialogue with a house servant, in place of the servant's own.
  * <p>
  * The dialogue head is a widget the client draws from the cache, so the widget is pointed at the
- * override NPC ({@link ServantModelCache#chatheadNpcId()}) and the client draws that NPC's head. It
+ * override NPC ({@link ServantModelCache#getChatheadNpcId()}) and the client draws that NPC's head. It
  * keeps its animation, the emote for the line, unless the override's {@link ChatheadEmote} is
  * {@link ChatheadEmote#NONE}, which clears it.
  * <p>
@@ -287,7 +287,7 @@ public class ChatheadSwapper
 
 	private Target targetFor(int npcId)
 	{
-		int chathead = modelCache.chatheadNpcId();
+		int chathead = modelCache.getChatheadNpcId();
 		if (!canSwap.getAsBoolean() || !ServantIds.isServant(npcId) || chathead < 0)
 		{
 			return null;

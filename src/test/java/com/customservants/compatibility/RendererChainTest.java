@@ -25,7 +25,8 @@
 package com.customservants.compatibility;
 
 import com.customservants.ServantDrawCallbacks;
-import java.util.function.Supplier;
+import static com.customservants.TestCallbacks.decorate;
+import static com.customservants.TestCallbacks.supplier;
 import net.runelite.api.hooks.DrawCallbacks;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -33,7 +34,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.withSettings;
 
 /**
  * Walking the stack of model-substituting decorators in the draw callbacks slot.
@@ -51,16 +51,6 @@ public class RendererChainTest
 	private static final String RETRO = "com.retronpcswapper.RetroDrawCallbacks";
 
 	private final DrawCallbacks renderer = mock(DrawCallbacks.class);
-
-	private static ServantDrawCallbacks decorate(DrawCallbacks delegate)
-	{
-		return new ServantDrawCallbacks(delegate, npc -> null);
-	}
-
-	private static DrawCallbacks supplier()
-	{
-		return mock(DrawCallbacks.class, withSettings().extraInterfaces(Supplier.class));
-	}
 
 	@Test
 	public void testCustomNpcModelsIsSeenThroughWhenItSuppliesItsDelegate()

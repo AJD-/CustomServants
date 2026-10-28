@@ -172,11 +172,16 @@ class OutlineTakeover
 	void letGo()
 	{
 		interactHighlight.restore();
+		dropTakeover();
+		publish(false);
+	}
+
+	/** Removes our overlay, clears the outliner and records that we no longer draw the outlines. */
+	private void dropTakeover()
+	{
 		overlayManager.remove(interactHighlightOverlay);
 		outliner.clear();
-
 		takenOver = false;
-		publish(false);
 	}
 
 	/**
@@ -262,9 +267,14 @@ class OutlineTakeover
 		if (config.overrideInteractHighlight())
 		{
 			log.debug("Interact Highlight NPC outlines re-enabled by the user under {}; turning the fix off", source);
-			configManager.setConfiguration(CustomServantsConfig.GROUP,
-				CustomServantsConfig.OVERRIDE_INTERACT_HIGHLIGHT, false);
+			turnFixOff();
 		}
+	}
+
+	/** Unticks the fix in our config. */
+	private void turnFixOff()
+	{
+		configManager.setConfiguration(CustomServantsConfig.GROUP, CustomServantsConfig.OVERRIDE_INTERACT_HIGHLIGHT, false);
 	}
 
 	/**
@@ -308,9 +318,7 @@ class OutlineTakeover
 	void restartForProfile()
 	{
 		interactHighlight.forget();
-		overlayManager.remove(interactHighlightOverlay);
-		outliner.clear();
-		takenOver = false;
+		dropTakeover();
 
 		interactHighlight.restoreStaleStash();
 		sync();
@@ -347,8 +355,7 @@ class OutlineTakeover
 			// which would put the stash back over the value the user just chose.
 			interactHighlight.optOut(changedKey);
 
-			configManager.setConfiguration(CustomServantsConfig.GROUP,
-				CustomServantsConfig.OVERRIDE_INTERACT_HIGHLIGHT, false);
+			turnFixOff();
 			sync();
 		});
 		return true;

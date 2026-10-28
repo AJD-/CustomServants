@@ -149,22 +149,8 @@ public class CustomServantsPlugin extends Plugin
 			try
 			{
 				// A dialogue left open shows the servant's own head again
-				try
-				{
-					chatheadSwapper.stop();
-				}
-				catch (RuntimeException e)
-				{
-					log.debug("Stopping the chathead swapper failed", e);
-				}
-				try
-				{
-					resetAllNpcs();
-				}
-				catch (RuntimeException e)
-				{
-					log.debug("Resetting the servants failed", e);
-				}
+				quietly("Stopping the chathead swapper", chatheadSwapper::stop);
+				quietly("Resetting the servants", this::resetAllNpcs);
 			}
 			finally
 			{
@@ -172,24 +158,10 @@ public class CustomServantsPlugin extends Plugin
 				// Unconditionally, not through sync(): a suppress() that threw partway leaves the
 				// suppression on with takenOver false, which sync() would not repair. Puts Interact
 				// Highlight's NPC outlines back, removes our overlay and clears the outliner
-				try
-				{
-					outlineTakeover.letGo();
-				}
-				catch (RuntimeException e)
-				{
-					log.debug("Handing the outlines back failed", e);
-				}
+				quietly("Handing the outlines back", outlineTakeover::letGo);
 				// Only after that restore, so a partner that takes the outlines over on hearing this
 				// stashes Interact Highlight's own settings rather than our false ones
-				try
-				{
-					outlineTakeover.withdraw();
-				}
-				catch (RuntimeException e)
-				{
-					log.debug("Withdrawing the outlines failed", e);
-				}
+				quietly("Withdrawing the outlines", outlineTakeover::withdraw);
 				// Even when detach left our decorator buried beneath another plugin's: it keeps asking
 				// for models, and only an empty cache makes it draw the vanilla ones
 				modelCache.clear();
@@ -199,6 +171,19 @@ public class CustomServantsPlugin extends Plugin
 				partnerClaims.withdraw();
 			}
 		});
+	}
+
+	/** Runs one shutdown step, logging rather than throwing if it fails, so the steps after it still run. */
+	private static void quietly(String what, Runnable step)
+	{
+		try
+		{
+			step.run();
+		}
+		catch (RuntimeException e)
+		{
+			log.debug("{} failed", what, e);
+		}
 	}
 
 	@Provides
@@ -215,30 +200,33 @@ public class CustomServantsPlugin extends Plugin
 		{
 			return;
 		}
-		// The stash is written from inside suppress() and restore(), and changes nothing a servant
-		// shows: resetting the servants from inside that write must not happen
-		if (!CustomServantsConfig.GROUP.equals(event.getGroup()) || InteractHighlightCompat.isStashKey(event.getKey()))
+		// Only our two settings are acted on. Anything else in our group, such as the stash written
+		// from inside suppress() and restore(), changes nothing a servant shows, and resetting the
+		// servants from inside that write must not happen
+		if (!CustomServantsConfig.GROUP.equals(event.getGroup()))
 		{
 			return;
 		}
 
-		log.debug("Config changed: {} = {}", event.getKey(), event.getNewValue());
-		if (CustomServantsConfig.OVERRIDE_INTERACT_HIGHLIGHT.equals(event.getKey()))
+		if (CustomServantsConfig.SERVANT_OVERRIDE.equals(event.getKey()))
 		{
+			log.debug("Config changed: {} = {}", event.getKey(), event.getNewValue());
+			clientThread.invoke(() ->
+			{
+				// Restored before the recheck, so no snapshot is taken of the old override's animations.
+				// The chathead swapper re-targets on its own on the next frame.
+				resetAllNpcs();
+				modelCache.setOverride(config.servantOverride());
+				modelCache.ensureBuilt();
+				recheckLoadedNpcs();
+			});
+		}
+		else if (CustomServantsConfig.OVERRIDE_INTERACT_HIGHLIGHT.equals(event.getKey()))
+		{
+			log.debug("Config changed: {} = {}", event.getKey(), event.getNewValue());
 			// Only the outlines depend on it
 			clientThread.invoke(outlineTakeover::sync);
-			return;
 		}
-
-		clientThread.invoke(() ->
-		{
-			// Restored before the recheck, so no snapshot is taken of the old override's animations.
-			// The chathead swapper re-targets on its own on the next frame.
-			resetAllNpcs();
-			modelCache.setOverride(config.servantOverride());
-			modelCache.ensureBuilt();
-			recheckLoadedNpcs();
-		});
 	}
 
 	@Subscribe
@@ -466,23 +454,13 @@ public class CustomServantsPlugin extends Plugin
 	void processNpc(NPC npc)
 	{
 		ServantIds.Servant s = ServantIds.get(npc.getId());
-		if (s == null)
-		{
-			// Eg an index that changed into a non-servant
-			resetNpc(npc);
-			return;
-		}
-		if (!attachment.isAttached() || !modelCache.ensureBuilt())
-		{
-			resetNpc(npc);
-			return;
-		}
-
 		ServantOverride ov = modelCache.getOverride();
-		if (s.getRig() == ov.getRig() || ov.getStandAnimation() == -1)
+		// Not a servant (eg an index that changed into a non-servant), or nothing to draw it as. Same
+		// rig: the servant's own sequences drive the model. Unknown stand: the base is drawn unposed,
+		// so the animations are left alone.
+		if (s == null || !attachment.isAttached() || !modelCache.ensureBuilt()
+			|| s.getRig() == ov.getRig() || ov.getStandAnimation() == -1)
 		{
-			// Same rig: the servant's own sequences drive the model. Unknown stand: the base is drawn
-			// unposed, so the animations are left alone.
 			resetNpc(npc);
 			return;
 		}
@@ -504,7 +482,7 @@ public class CustomServantsPlugin extends Plugin
 			originalStates.put(idx, OriginalNpcState.capture(npc));
 		}
 
-		int walk = ov.getWalkAnimation() != -1 ? ov.getWalkAnimation() : stand;
+		int walk = ov.getEffectiveWalk();
 		npc.setIdlePoseAnimation(stand);
 		npc.setPoseAnimation(stand);
 		npc.setIdleRotateLeft(stand);

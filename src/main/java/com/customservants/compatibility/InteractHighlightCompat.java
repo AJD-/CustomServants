@@ -26,6 +26,7 @@ package com.customservants.compatibility;
 
 import com.customservants.CustomServantsConfig;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -60,8 +61,12 @@ public class InteractHighlightCompat
 	private static final String SHOW_HOVER = "npcShowHover";
 	private static final String SHOW_INTERACT = "npcShowInteract";
 
-	/** Every Interact Highlight key suppressed while this plugin draws those outlines itself. */
-	private static final List<String> KEYS = Arrays.asList(SHOW_HOVER, SHOW_INTERACT);
+	/**
+	 * Every Interact Highlight key suppressed while this plugin draws those outlines itself. Not
+	 * List.of, whose contains throws on null: {@link #isUserOverride} passes it a ConfigChanged's key
+	 * unchecked.
+	 */
+	private static final List<String> KEYS = Collections.unmodifiableList(Arrays.asList(SHOW_HOVER, SHOW_INTERACT));
 
 	private static final String STASH_PREFIX = "interactHighlightStash_";
 
@@ -195,7 +200,7 @@ public class InteractHighlightCompat
 
 		for (String key : KEYS)
 		{
-			write(key, "false");
+			writeOwn(key, "false");
 		}
 		log.debug("Suppressed Interact Highlight NPC outlines");
 	}
@@ -221,12 +226,7 @@ public class InteractHighlightCompat
 	 */
 	public void restoreStaleStash()
 	{
-		boolean stale = false;
-		for (String key : KEYS)
-		{
-			stale |= stashed(key) != null;
-		}
-		if (!stale)
+		if (KEYS.stream().noneMatch(key -> stashed(key) != null))
 		{
 			return;
 		}
@@ -334,32 +334,24 @@ public class InteractHighlightCompat
 			return;
 		}
 
+		writeOwn(key, STASH_UNSET.equals(stashed) ? null : stashed);
+		discard(key);
+	}
+
+	/** Writes Interact Highlight's {@code key}, or unsets it when {@code value} is null, as our own write. */
+	private void writeOwn(String key, String value)
+	{
 		selfWrite = true;
 		try
 		{
-			if (STASH_UNSET.equals(stashed))
+			if (value == null)
 			{
 				configManager.unsetConfiguration(GROUP, key);
 			}
 			else
 			{
-				configManager.setConfiguration(GROUP, key, stashed);
+				configManager.setConfiguration(GROUP, key, value);
 			}
-		}
-		finally
-		{
-			selfWrite = false;
-		}
-
-		discard(key);
-	}
-
-	private void write(String key, String value)
-	{
-		selfWrite = true;
-		try
-		{
-			configManager.setConfiguration(GROUP, key, value);
 		}
 		finally
 		{

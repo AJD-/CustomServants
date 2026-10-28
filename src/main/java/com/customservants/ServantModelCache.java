@@ -26,6 +26,7 @@ package com.customservants;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -76,6 +77,8 @@ public class ServantModelCache
 	// Pre-scaled copy of base for the no-animation path only; null when the scale is 128
 	private Model scaledBase;
 
+	/** The NPC id whose chathead to borrow for the current override, -1 when none. */
+	@Getter
 	private int chatheadNpcId = -1;
 
 	// A build that produced nothing, remembered so it is not retried every frame
@@ -117,16 +120,8 @@ public class ServantModelCache
 		// The base compositions are used throughout - transform() would resolve a multinpc against
 		// the local player's varbits, which have nothing to do with how the servant should look
 		int[] ids = override.getNpcIds();
-		int bodyId = ServantOverride.firstMatching(ids, id ->
-		{
-			NPCComposition c = client.getNpcDefinition(id);
-			return c != null && c.getModels() != null && c.getModels().length > 0;
-		});
-		chatheadNpcId = ServantOverride.firstMatching(ids, id ->
-		{
-			NPCComposition c = client.getNpcDefinition(id);
-			return c != null && c.getChatheadModels() != null && c.getChatheadModels().length > 0;
-		});
+		int bodyId = ServantOverride.firstMatching(ids, id -> hasAny(id, NPCComposition::getModels));
+		chatheadNpcId = ServantOverride.firstMatching(ids, id -> hasAny(id, NPCComposition::getChatheadModels));
 
 		NPCComposition body = bodyId == -1 ? null : client.getNpcDefinition(bodyId);
 		ModelData merged = body == null ? null : build(body);
@@ -149,6 +144,14 @@ public class ServantModelCache
 		}
 
 		return base != null;
+	}
+
+	/** Whether NPC {@code id}'s composition has at least one of the models {@code models} reads from it. */
+	private boolean hasAny(int id, Function<NPCComposition, int[]> models)
+	{
+		NPCComposition c = client.getNpcDefinition(id);
+		int[] ids = c == null ? null : models.apply(c);
+		return ids != null && ids.length > 0;
 	}
 
 	/**
@@ -233,14 +236,6 @@ public class ServantModelCache
 	}
 
 	/**
-	 * @return the NPC id whose chathead to borrow for the current override, -1 when none
-	 */
-	public int chatheadNpcId()
-	{
-		return chatheadNpcId;
-	}
-
-	/**
 	 * Render path: poses the base model with the servant's current animation state. One servant
 	 * lookup and one {@code applyTransformations} call per frame.
 	 *
@@ -272,11 +267,12 @@ public class ServantModelCache
 		{
 			// Nothing to pose. applyTransformations may hand the base itself back here, so it is
 			// not scaled in place; a pre-scaled copy stands in for it
-			return scaledBase();
+			return scaledBase != null ? scaledBase : base;
 		}
 
 		Model posed = client.applyTransformations(base, action, af, pose, pf);
-		if (posed != null && (widthScale != UNSCALED || heightScale != UNSCALED))
+		// Once built, scaledBase exists exactly when the scale is not 128
+		if (posed != null && scaledBase != null)
 		{
 			// The posed model is the client's shared sequence model, rebuilt from base on every
 			// call, so scaling it in place is per frame and never accumulates - the same order the
@@ -284,11 +280,6 @@ public class ServantModelCache
 			posed.scale(widthScale, heightScale, widthScale);
 		}
 		return posed;
-	}
-
-	private Model scaledBase()
-	{
-		return scaledBase != null ? scaledBase : base;
 	}
 
 	/**

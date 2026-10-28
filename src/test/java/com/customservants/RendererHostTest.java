@@ -24,6 +24,7 @@
  */
 package com.customservants;
 
+import static com.customservants.TestCallbacks.decorate;
 import com.customservants.compatibility.RendererChain;
 import java.util.function.Supplier;
 import net.runelite.api.hooks.DrawCallbacks;
@@ -51,11 +52,6 @@ public class RendererHostTest
 	private static Plugin gpuPlugin()
 	{
 		return mock(Plugin.class, withSettings().extraInterfaces(DrawCallbacks.class));
-	}
-
-	private static DrawCallbacks decorate(DrawCallbacks delegate)
-	{
-		return new ServantDrawCallbacks(delegate, npc -> null);
 	}
 
 	@Test
@@ -122,7 +118,7 @@ public class RendererHostTest
 	public void testAnUnknownDecoratorIsNotSeenThrough()
 	{
 		// Supplies the GPU plugin, but nothing says it forwards everything else to it
-		DrawCallbacks unknown = mock(DrawCallbacks.class, withSettings().extraInterfaces(Supplier.class));
+		DrawCallbacks unknown = TestCallbacks.supplier();
 		when(((Supplier<?>) unknown).get()).thenReturn(gpu);
 
 		assertFalse(RendererAttachment.isSupportedHost(unknown, gpu));

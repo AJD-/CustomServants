@@ -95,25 +95,25 @@ public final class ServantDrawCallbacks implements DrawCallbacks, Supplier<DrawC
 		Renderable renderable = gameObject.getRenderable();
 		if (renderable instanceof NPC)
 		{
+			NPC npc = (NPC) renderable;
 			// Never allow a substitution failure to take the renderer down with it
 			try
 			{
-				substitute = substitutor.substitute((NPC) renderable);
+				substitute = substitutor.substitute(npc);
 			}
 			catch (Exception ex)
 			{
-				substitute = null;
 				// This runs for every NPC every frame, so a failure that keeps happening is only
 				// warned about once instead of thousands of times a minute
 				if (!failureReported)
 				{
 					failureReported = true;
 					log.warn("Servant model substitution failed for NPC {}, drawing the vanilla model. "
-						+ "Later failures are logged at debug.", ((NPC) renderable).getId(), ex);
+						+ "Later failures are logged at debug.", npc.getId(), ex);
 				}
 				else
 				{
-					log.debug("Servant model substitution failed for NPC {}", ((NPC) renderable).getId(), ex);
+					log.debug("Servant model substitution failed for NPC {}", npc.getId(), ex);
 				}
 			}
 		}

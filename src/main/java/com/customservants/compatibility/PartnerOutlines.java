@@ -88,7 +88,7 @@ public class PartnerOutlines
 	}
 
 	/** Whether {@code source} has taken Interact Highlight's NPC outlines over. Any thread. */
-	public boolean isOwning(String source)
+	boolean isOwning(String source)
 	{
 		ModelSwapProtocol.Outlines outlines = source == null ? null : bySource.get(source);
 		return outlines != null && outlines.isOwning();
@@ -142,7 +142,7 @@ public class PartnerOutlines
 	 * it. Client thread only, and the model is overwritten by that partner's next pose, so it has to
 	 * be used straight away.
 	 */
-	public Model pose(String source, NPC npc)
+	Model pose(String source, NPC npc)
 	{
 		ModelSwapProtocol.Outlines outlines = source == null ? null : bySource.get(source);
 		Function<NPC, Model> poser = outlines == null ? null : outlines.getPoser();
