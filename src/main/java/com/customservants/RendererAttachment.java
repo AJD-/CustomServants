@@ -53,9 +53,9 @@ class RendererAttachment
 
 	private final PluginManager pluginManager;
 
-    // Supplied by the plugin before the first attach(); it is not injectable
+	// Supplied by the plugin before the first attach(); it is not injectable
 	@Setter
-    private ModelSubstitutor substitutor;
+	private ModelSubstitutor substitutor;
 
 	// Our decorator, while it is in the client's draw callbacks chain
 	private ServantDrawCallbacks wrapper;
@@ -73,7 +73,7 @@ class RendererAttachment
 		this.pluginManager = pluginManager;
 	}
 
-    /** Whether our decorator is in the draw callbacks chain, so servants can be drawn custom at all. */
+	/** Whether our decorator is in the draw callbacks chain, so servants can be drawn custom at all. */
 	boolean isAttached()
 	{
 		return wrapper != null;

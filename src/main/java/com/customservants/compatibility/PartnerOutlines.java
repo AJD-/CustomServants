@@ -60,7 +60,7 @@ public class PartnerOutlines
 	// Whether this start has asked the partners for their state, and so whether their silence means
 	// they are absent
 	@Getter
-    private volatile boolean handshakeDone;
+	private volatile boolean handshakeDone;
 
 	/**
 	 * Records {@code source}'s outlines state, replacing what it said before. A source not in
@@ -107,7 +107,7 @@ public class PartnerOutlines
 		return false;
 	}
 
-    public void setHandshakeDone()
+	public void setHandshakeDone()
 	{
 		handshakeDone = true;
 	}

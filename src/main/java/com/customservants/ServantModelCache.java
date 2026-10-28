@@ -62,8 +62,8 @@ public class ServantModelCache
 	@Inject
 	private Client client;
 
-    @Getter
-    private ServantOverride override = ServantOverride.DEFAULT;
+	@Getter
+	private ServantOverride override = ServantOverride.DEFAULT;
 
 	// Lit and unposed, at the model's natural size; null when nothing has been built (or nothing could be)
 	private Model base;
@@ -100,7 +100,7 @@ public class ServantModelCache
 		this.override = override;
 	}
 
-    /**
+	/**
 	 * Builds the base model for the current override if it has not been attempted yet. Builds at most
 	 * once per override and remembers a failure, so an unbuildable override is not retried every frame.
 	 *
