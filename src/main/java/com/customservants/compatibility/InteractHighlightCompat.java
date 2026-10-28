@@ -143,7 +143,8 @@ public class InteractHighlightCompat
 		return config;
 	}
 
-	public boolean isInteractHighlightPlugin(Plugin plugin)
+	/** Whether {@code plugin} is Interact Highlight, whose restart undoes the takeover. Any thread. */
+	public static boolean isInteractHighlightPlugin(Plugin plugin)
 	{
 		return plugin instanceof InteractHighlightPlugin;
 	}

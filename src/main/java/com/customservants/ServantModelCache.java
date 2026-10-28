@@ -78,8 +78,6 @@ public class ServantModelCache
 
 	private int chatheadNpcId = -1;
 
-	private boolean built;
-
 	// A build that produced nothing, remembered so it is not retried every frame
 	private boolean unbuildable;
 
@@ -114,10 +112,6 @@ public class ServantModelCache
 		if (base != null)
 		{
 			return true;
-		}
-		if (built)
-		{
-			return false;
 		}
 
 		// The base compositions are used throughout - transform() would resolve a multinpc against
@@ -154,7 +148,6 @@ public class ServantModelCache
 			log.debug("No model could be built for servant override {} (body npc {})", override.name(), bodyId);
 		}
 
-		built = true;
 		return base != null;
 	}
 
@@ -308,7 +301,6 @@ public class ServantModelCache
 		widthScale = UNSCALED;
 		heightScale = UNSCALED;
 		chatheadNpcId = -1;
-		built = false;
 		unbuildable = false;
 		animations.clear();
 	}

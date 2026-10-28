@@ -162,24 +162,6 @@ public final class ModelSwapProtocol
 	}
 
 	/**
-	 * Whether {@code message} is {@code fromSource} asking for this plugin's state, in a version
-	 * this plugin speaks.
-	 */
-	public static boolean isSyncReq(PluginMessage message, String fromSource)
-	{
-		return isFrom(message, SYN, fromSource);
-	}
-
-	/**
-	 * Whether {@code message} is {@code fromSource} saying the user turned Interact Highlight's NPC
-	 * outlines back on.
-	 */
-	public static boolean isOptOut(PluginMessage message, String fromSource)
-	{
-		return isFrom(message, OUTLINES_OPT_OUT, fromSource);
-	}
-
-	/**
 	 * The partner a {@code name} message is from, or null when {@code message} is anything else - of
 	 * another name or version, or from a source not in {@link #PARTNERS}.
 	 */

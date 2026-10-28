@@ -335,7 +335,7 @@ public class CustomServantsPlugin extends Plugin
 			// attach() declines on its own when no supported renderer holds the slot
 			clientThread.invoke(this::attach);
 		}
-		else if (OutlineTakeover.isInteractHighlight(plugin))
+		else if (InteractHighlightCompat.isInteractHighlightPlugin(plugin))
 		{
 			// Its restart undoes the suppression, and its stop leaves nothing to take over
 			log.debug("Interact Highlight {}", event.isLoaded() ? "started" : "stopped");

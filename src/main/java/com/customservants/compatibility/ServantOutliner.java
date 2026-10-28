@@ -24,7 +24,6 @@
  */
 package com.customservants.compatibility;
 
-import com.customservants.ServantDrawCallbacks;
 import com.customservants.ServantModelCache;
 import java.awt.Color;
 import javax.inject.Inject;
@@ -42,7 +41,7 @@ import net.runelite.client.ui.overlay.outline.ModelOutlineRenderer;
  * Outlines the servant geometry an NPC is actually drawn with.
  * <p>
  * {@link ModelOutlineRenderer}'s {@code Actor} overload reads {@code Actor#getModel()}, which is
- * always the vanilla mesh - substitution happens further down in {@link ServantDrawCallbacks} and
+ * always the vanilla mesh - substitution happens further down in {@link com.customservants.ServantDrawCallbacks} and
  * never changes what the API reports - so an NPC we swap gets outlined around a silhouette that is
  * not on screen. The {@link RuneLiteObject} overload is the one public entry point that outlines a
  * caller-supplied model, so a scratch object carries the posed servant model into it.

@@ -25,7 +25,6 @@
  */
 package com.customservants.compatibility;
 
-import com.customservants.CustomServantsPlugin;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
@@ -33,7 +32,6 @@ import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.MenuAction;
-import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
@@ -54,8 +52,8 @@ import net.runelite.client.eventbus.Subscribe;
  * plugin draws NPC outlines, that plugin is still the one drawing objects, ground items and
  * players, with its own code and its own state.
  * <p>
- * {@link CustomServantsPlugin} registers this on the event bus while it runs, since the bus only
- * registers the plugin itself and none of the objects it injects.
+ * {@link com.customservants.CustomServantsPlugin} registers this on the event bus while it runs,
+ * since the bus only registers the plugin itself and none of the objects it injects.
  */
 @Singleton
 public class InteractTargetTracker
@@ -187,7 +185,8 @@ public class InteractTargetTracker
 	}
 
 	/**
-	 * The actor being interacted with, which may be an {@link NPC} or a {@link Player}, or null.
+	 * The actor being interacted with, which may be an {@link net.runelite.api.NPC} or a
+	 * {@link Player}, or null.
 	 */
 	Actor getInteractedTarget()
 	{

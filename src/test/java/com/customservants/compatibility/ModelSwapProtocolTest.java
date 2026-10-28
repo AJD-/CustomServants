@@ -209,28 +209,6 @@ public class ModelSwapProtocolTest
 	}
 
 	@Test
-	public void testSyncReqIsRecognisedFromRetroOnly()
-	{
-		PluginMessage syn = message(ModelSwapProtocol.SYN, ModelSwapProtocol.VERSION, RETRO);
-		assertTrue(ModelSwapProtocol.isSyncReq(syn, RETRO));
-		assertFalse(ModelSwapProtocol.isSyncReq(syn, ModelSwapProtocol.SOURCE_CUSTOM_NPC_MODELS));
-		assertFalse(ModelSwapProtocol.isSyncReq(syn, null));
-
-		// Another plugin's request, or claims, are not Retro NPC Swapper asking
-		assertFalse(ModelSwapProtocol.isSyncReq(message(ModelSwapProtocol.SYN, ModelSwapProtocol.VERSION,
-			ModelSwapProtocol.SOURCE_CUSTOM_NPC_MODELS), RETRO));
-		assertFalse(ModelSwapProtocol.isSyncReq(ModelSwapProtocol.claimsMessage(Collections.emptySet()), RETRO));
-		assertFalse(ModelSwapProtocol.isSyncReq(message(ModelSwapProtocol.CLAIMS, ModelSwapProtocol.VERSION, RETRO), RETRO));
-
-		// Malformed or foreign
-		assertFalse(ModelSwapProtocol.isSyncReq(null, RETRO));
-		assertFalse(ModelSwapProtocol.isSyncReq(new PluginMessage(ModelSwapProtocol.NAMESPACE, ModelSwapProtocol.SYN), RETRO));
-		assertFalse(ModelSwapProtocol.isSyncReq(message(ModelSwapProtocol.SYN, ModelSwapProtocol.VERSION, null), RETRO));
-		assertFalse(ModelSwapProtocol.isSyncReq(message(ModelSwapProtocol.SYN, ModelSwapProtocol.VERSION + 1, RETRO), RETRO));
-		assertFalse(ModelSwapProtocol.isSyncReq(new PluginMessage("some-plugin", ModelSwapProtocol.SYN, new HashMap<>(syn.getData())), RETRO));
-	}
-
-	@Test
 	public void testThePayloadHoldsOnlyJdkTypes()
 	{
 		Map<String, Object> data = ModelSwapProtocol.claimsMessage(new HashSet<>(Arrays.asList(5779, 5780))).getData();
@@ -384,26 +362,5 @@ public class ModelSwapProtocolTest
 			new HashMap<>(ModelSwapProtocol.outlinesMessage(RETRO, true, null).getData())), outlines));
 		assertNull(ModelSwapProtocol.partnerSource(new PluginMessage(ModelSwapProtocol.NAMESPACE, outlines), outlines));
 		assertNull(ModelSwapProtocol.partnerSource(null, outlines));
-	}
-
-	@Test
-	public void testOptOutAndSyncReqAreRecognisedFromEachPartner()
-	{
-		for (String partner : ModelSwapProtocol.PARTNERS)
-		{
-			assertTrue(partner, ModelSwapProtocol.isOptOut(ModelSwapProtocol.optOutMessage(partner), partner));
-			assertTrue(partner, ModelSwapProtocol.isSyncReq(ModelSwapProtocol.synMessage(partner), partner));
-
-			// Neither is the other, and neither is ours
-			assertFalse(partner, ModelSwapProtocol.isOptOut(ModelSwapProtocol.synMessage(partner), partner));
-			assertFalse(partner, ModelSwapProtocol.isSyncReq(ModelSwapProtocol.optOutMessage(partner), partner));
-			assertFalse(partner, ModelSwapProtocol.isOptOut(ModelSwapProtocol.optOutMessage(SERVANTS), partner));
-			assertFalse(partner, ModelSwapProtocol.isSyncReq(ModelSwapProtocol.synMessage(SERVANTS), partner));
-		}
-
-		assertFalse(ModelSwapProtocol.isOptOut(ModelSwapProtocol.optOutMessage(RETRO), CUSTOM));
-		assertFalse(ModelSwapProtocol.isOptOut(ModelSwapProtocol.optOutMessage(RETRO), null));
-		assertFalse(ModelSwapProtocol.isOptOut(null, RETRO));
-		assertFalse(ModelSwapProtocol.isOptOut(message(ModelSwapProtocol.OUTLINES_OPT_OUT, ModelSwapProtocol.VERSION + 1, RETRO), RETRO));
 	}
 }

@@ -41,8 +41,6 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.plugins.Plugin;
-import net.runelite.client.plugins.interacthighlight.InteractHighlightPlugin;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 /**
@@ -354,16 +352,6 @@ class OutlineTakeover
 			sync();
 		});
 		return true;
-	}
-
-	/**
-	 * Whether {@code plugin} is Interact Highlight, whose restart undoes the takeover. The same
-	 * check as {@link InteractHighlightCompat#isInteractHighlightPlugin}, static so it needs no
-	 * instance. Any thread.
-	 */
-	static boolean isInteractHighlight(Plugin plugin)
-	{
-		return plugin instanceof InteractHighlightPlugin;
 	}
 
 	/** Drops the outline carrier's reference to a posed model, which may be a partner's. */
