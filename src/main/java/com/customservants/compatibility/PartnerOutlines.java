@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import javax.inject.Singleton;
+
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Model;
 import net.runelite.api.NPC;
@@ -57,7 +59,8 @@ public class PartnerOutlines
 
 	// Whether this start has asked the partners for their state, and so whether their silence means
 	// they are absent
-	private volatile boolean handshakeDone;
+	@Getter
+    private volatile boolean handshakeDone;
 
 	/**
 	 * Records {@code source}'s outlines state, replacing what it said before. A source not in
@@ -104,12 +107,7 @@ public class PartnerOutlines
 		return false;
 	}
 
-	public boolean isHandshakeDone()
-	{
-		return handshakeDone;
-	}
-
-	public void setHandshakeDone()
+    public void setHandshakeDone()
 	{
 		handshakeDone = true;
 	}

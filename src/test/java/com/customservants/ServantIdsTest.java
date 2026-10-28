@@ -26,6 +26,8 @@ package com.customservants;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+
 import net.runelite.api.gameval.NpcID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -107,10 +109,10 @@ public class ServantIdsTest
 	@Test
 	public void rolesMatchTheirIds()
 	{
-		assertEquals("Rick", ServantIds.get(NpcID.POH_SERVANT_MULTI_DOGSBODY).getRole());
-		assertEquals("Maid", ServantIds.get(NpcID.POH_SERVANT_MULTI_WAITER_WOMAN).getRole());
-		assertEquals("Cook", ServantIds.get(NpcID.POH_SERVANT_MULTI_COOK_WOMAN).getRole());
-		assertEquals("Butler", ServantIds.get(NpcID.POH_SERVANT_MULTI_MAITRE_D_MAN).getRole());
+		assertEquals("Rick", Objects.requireNonNull(ServantIds.get(NpcID.POH_SERVANT_MULTI_DOGSBODY)).getRole());
+		assertEquals("Maid", Objects.requireNonNull(ServantIds.get(NpcID.POH_SERVANT_MULTI_WAITER_WOMAN)).getRole());
+		assertEquals("Cook", Objects.requireNonNull(ServantIds.get(NpcID.POH_SERVANT_MULTI_COOK_WOMAN)).getRole());
+		assertEquals("Butler", Objects.requireNonNull(ServantIds.get(NpcID.POH_SERVANT_MULTI_MAITRE_D_MAN)).getRole());
 	}
 
 	@Test

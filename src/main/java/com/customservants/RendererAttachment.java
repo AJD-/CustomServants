@@ -27,6 +27,8 @@ package com.customservants;
 import com.customservants.compatibility.RendererChain;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.hooks.DrawCallbacks;
@@ -51,8 +53,9 @@ class RendererAttachment
 
 	private final PluginManager pluginManager;
 
-	// Supplied by the plugin before the first attach(); it is not injectable
-	private ModelSubstitutor substitutor;
+    // Supplied by the plugin before the first attach(); it is not injectable
+	@Setter
+    private ModelSubstitutor substitutor;
 
 	// Our decorator, while it is in the client's draw callbacks chain
 	private ServantDrawCallbacks wrapper;
@@ -70,13 +73,7 @@ class RendererAttachment
 		this.pluginManager = pluginManager;
 	}
 
-	/** Sets what the decorator asks for each NPC's model. Must be called before {@link #attach()}. */
-	public void setSubstitutor(ModelSubstitutor substitutor)
-	{
-		this.substitutor = substitutor;
-	}
-
-	/** Whether our decorator is in the draw callbacks chain, so servants can be drawn custom at all. */
+    /** Whether our decorator is in the draw callbacks chain, so servants can be drawn custom at all. */
 	boolean isAttached()
 	{
 		return wrapper != null;

@@ -47,7 +47,7 @@ import net.runelite.api.gameval.NpcID;
  * sequences, which {@code Client#applyTransformations} may or may not pose. If they render wrong in
  * game, the fallback is stand/walk = -1, which draws the base model unposed.
  * <p>
- * Recolours and the width/height scale are read from the body's {@code NPCComposition} at runtime,
+ * Recolors and the width/height scale are read from the body's {@code NPCComposition} at runtime,
  * so they are not stored here. No override has retextures in the cache, so those arrays are empty.
  */
 @Getter

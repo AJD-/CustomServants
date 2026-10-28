@@ -106,7 +106,7 @@ public final class ModelSwapProtocol
 	 * the NPCs it swaps.
 	 */
 	@Value
-	public static final class Outlines
+	public static class Outlines
 	{
 		/** Whether the partner has taken Interact Highlight's NPC outlines over. */
 		boolean owning;

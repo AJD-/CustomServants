@@ -289,7 +289,7 @@ public final class NpcDefinitionDumper
 
 	private void printSequence(String field, int sequenceId)
 	{
-		System.out.println(String.format("  %-25s %s", field, sequence(sequenceId).describe()));
+		System.out.printf("  %-25s %s%n", field, sequence(sequenceId).describe());
 	}
 
 	private void printSummary()
@@ -305,8 +305,8 @@ public final class NpcDefinitionDumper
 		{
 			NpcDefinition def = npcManager.get(servant.getNpcId());
 			SequenceInfo stand = def == null ? SequenceInfo.none() : sequence(def.standingAnimation);
-			System.out.println(String.format("  %-13s %5d  %-5s  %s", servant.getRole(), servant.getNpcId(),
-				servant.getRig(), def == null ? "MISSING FROM CACHE" : stand.describe()));
+			System.out.printf("  %-13s %5d  %-5s  %s%n", servant.getRole(), servant.getNpcId(),
+				servant.getRig(), def == null ? "MISSING FROM CACHE" : stand.describe());
 
 			Set<Integer> roleFramemaps = framemapsByRole.computeIfAbsent(servant.getRole(), k -> new TreeSet<>());
 			Integer framemap = stand.framemapOrNull();

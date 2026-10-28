@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+
+import lombok.Getter;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Animation;
@@ -59,7 +61,8 @@ public class ServantModelCache
 	@Inject
 	private Client client;
 
-	private ServantOverride override = ServantOverride.DEFAULT;
+    @Getter
+    private ServantOverride override = ServantOverride.DEFAULT;
 
 	// Lit and unposed, at the model's natural size; null when nothing has been built (or nothing could be)
 	private Model base;
@@ -96,15 +99,7 @@ public class ServantModelCache
 		this.override = override;
 	}
 
-	/**
-	 * @return the current override, {@link ServantOverride#DEFAULT} until one is set
-	 */
-	public ServantOverride getOverride()
-	{
-		return override;
-	}
-
-	/**
+    /**
 	 * Builds the base model for the current override if it has not been attempted yet. Builds at most
 	 * once per override and remembers a failure, so an unbuildable override is not retried every frame.
 	 *
