@@ -27,6 +27,7 @@ package com.customservants;
 import com.customservants.compatibility.InteractHighlightCompat;
 import com.customservants.compatibility.InteractTargetTracker;
 import com.customservants.compatibility.ModelSwapProtocol;
+import com.customservants.compatibility.Partner;
 import com.customservants.compatibility.PartnerClaims;
 import com.google.inject.Provides;
 import java.util.HashMap;
@@ -61,12 +62,6 @@ import net.runelite.client.plugins.PluginDescriptor;
 )
 public class CustomServantsPlugin extends Plugin
 {
-	/** Another Hub plugin, so recognized by class name alone, never imported. */
-	private static final String RETRO_PLUGIN_CLASS = "com.retronpcswapper.RetroNpcSwapperPlugin";
-
-	/** Likewise a Hub plugin, recognized by class name alone. */
-	private static final String CUSTOM_NPC_MODELS_PLUGIN_CLASS = "com.customnpcmodels.CustomNpcModelsPlugin";
-
 	@Inject
 	private Client client;
 
@@ -115,6 +110,7 @@ public class CustomServantsPlugin extends Plugin
 		attachment.setSubstitutor(npc -> attachment.isAttached() ? modelCache.pose(npc) : null);
 		chatheadSwapper.start(this::canSwap);
 		outlineTakeover.start(this::canSwap);
+		partnerClaims.start(this::canSwap);
 		clientThread.invoke(() ->
 		{
 			// First: a session that died while suppressing left Interact Highlight's NPC outlines
@@ -317,7 +313,7 @@ public class CustomServantsPlugin extends Plugin
 	public void onPluginChanged(PluginChanged event)
 	{
 		Plugin plugin = event.getPlugin();
-		String className = plugin.getClass().getName();
+		Partner partner = Partner.byPluginClass(plugin.getClass().getName());
 		if (plugin == this && event.isLoaded())
 		{
 			// Our own start posted claims before any partner could hear us, and a partner already
@@ -325,7 +321,7 @@ public class CustomServantsPlugin extends Plugin
 			// start-up publish went out before anyone was listening.
 			log.debug("Started; asking the partners for their state");
 			eventBus.post(ModelSwapProtocol.synMessage(ModelSwapProtocol.SOURCE_CUSTOM_SERVANTS));
-			clientThread.invoke(() -> partnerClaims.publish(canSwap(), true));
+			clientThread.invoke(() -> partnerClaims.publish(true));
 			// The partners answer the syn through invoke, so their answers are queued ahead of this
 			clientThread.invokeLater(outlineTakeover::finishHandshake);
 		}
@@ -341,35 +337,18 @@ public class CustomServantsPlugin extends Plugin
 			log.debug("Interact Highlight {}", event.isLoaded() ? "started" : "stopped");
 			clientThread.invoke(outlineTakeover::sync);
 		}
-		else if (RETRO_PLUGIN_CLASS.equals(className))
+		else if (partner != null)
 		{
-			log.debug("Retro NPC Swapper {}", event.isLoaded() ? "started" : "stopped");
+			log.debug("Partner {} {}", partner.getSource(), event.isLoaded() ? "started" : "stopped");
 			if (event.isLoaded())
 			{
-				// Forced: Retro NPC Swapper ignores claims and outlines while it is off, and its own
-				// sync request may have been posted before we were listening
-				clientThread.invoke(() ->
-				{
-					partnerClaims.publish(canSwap(), true);
-					outlineTakeover.publish(true);
-				});
+				// Forced: a partner ignores claims and outlines while it is off, and its own sync
+				// request may have been posted before we were listening
+				answerPartner(partner);
 			}
 			else
 			{
-				outlineTakeover.onPartnerStopped(ModelSwapProtocol.SOURCE_RETRO_NPC_SWAPPER);
-			}
-		}
-		else if (CUSTOM_NPC_MODELS_PLUGIN_CLASS.equals(className))
-		{
-			log.debug("Custom NPC Models {}", event.isLoaded() ? "started" : "stopped");
-			if (event.isLoaded())
-			{
-				// It reads no claims, only the outlines
-				clientThread.invoke(() -> outlineTakeover.publish(true));
-			}
-			else
-			{
-				outlineTakeover.onPartnerStopped(ModelSwapProtocol.SOURCE_CUSTOM_NPC_MODELS);
+				outlineTakeover.onPartnerStopped(partner.getSource());
 			}
 		}
 	}
@@ -377,19 +356,12 @@ public class CustomServantsPlugin extends Plugin
 	@Subscribe
 	public void onPluginMessage(PluginMessage event)
 	{
-		String syncFrom = ModelSwapProtocol.partnerSource(event, ModelSwapProtocol.SYN);
+		// partnerSource only answers with a source in PARTNERS, each of which is a Partner
+		Partner syncFrom = Partner.bySource(ModelSwapProtocol.partnerSource(event, ModelSwapProtocol.SYN));
 		if (syncFrom != null)
 		{
-			log.debug("Sync request from {}", syncFrom);
-			clientThread.invoke(() ->
-			{
-				// Only Retro NPC Swapper reads claims
-				if (ModelSwapProtocol.SOURCE_RETRO_NPC_SWAPPER.equals(syncFrom))
-				{
-					partnerClaims.publish(canSwap(), true);
-				}
-				outlineTakeover.publish(true);
-			});
+			log.debug("Sync request from {}", syncFrom.getSource());
+			answerPartner(syncFrom);
 			return;
 		}
 
@@ -420,6 +392,22 @@ public class CustomServantsPlugin extends Plugin
 	}
 
 	/**
+	 * Sends {@code partner} our current state, forced: our claims when it reads them, then our
+	 * outlines. On the client thread, through invoke.
+	 */
+	private void answerPartner(Partner partner)
+	{
+		clientThread.invoke(() ->
+		{
+			if (partner.isReadsClaims())
+			{
+				partnerClaims.publish(true);
+			}
+			outlineTakeover.publish(true);
+		});
+	}
+
+	/**
 	 * Whether the dialogue chathead may be swapped: the head follows the body, so no renderer means no
 	 * head swap either. Client thread only.
 	 */
@@ -443,7 +431,7 @@ public class CustomServantsPlugin extends Plugin
 	{
 		// Before the early returns, so a detach or failed build gives the servants back even when
 		// there is no scene to recheck
-		partnerClaims.publish(canSwap(), false);
+		partnerClaims.publish(false);
 		// Likewise, as this is where canSwap changes; free when the decision has not
 		outlineTakeover.sync();
 
@@ -467,7 +455,7 @@ public class CustomServantsPlugin extends Plugin
 
 		// Again, as processNpc may have built the model just now: claimed in the same transition.
 		// Free when nothing changed, as an unchanged set is not posted again.
-		partnerClaims.publish(canSwap(), false);
+		partnerClaims.publish(false);
 		outlineTakeover.sync();
 	}
 

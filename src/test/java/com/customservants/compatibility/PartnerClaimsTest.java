@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.events.PluginMessage;
 import static org.junit.Assert.assertEquals;
@@ -49,12 +50,21 @@ public class PartnerClaimsTest
 {
 	private EventBus eventBus;
 	private PartnerClaims claims;
+	// What the plugin's canSwap answers
+	private final AtomicBoolean claiming = new AtomicBoolean();
 
 	@Before
 	public void setUp()
 	{
 		eventBus = mock(EventBus.class);
 		claims = new PartnerClaims(eventBus);
+		claims.start(claiming::get);
+	}
+
+	private void publish(boolean claim, boolean always)
+	{
+		claiming.set(claim);
+		claims.publish(always);
 	}
 
 	/**
@@ -81,7 +91,7 @@ public class PartnerClaimsTest
 	{
 		assertFalse(ServantIds.allIds().isEmpty());
 
-		claims.publish(true, false);
+		publish(true, false);
 
 		assertEquals(List.of(ServantIds.allIds()), posted(1));
 	}
@@ -89,8 +99,8 @@ public class PartnerClaimsTest
 	@Test
 	public void anUnchangedClaimIsNotPostedAgain()
 	{
-		claims.publish(true, false);
-		claims.publish(true, false);
+		publish(true, false);
+		publish(true, false);
 
 		assertEquals(List.of(ServantIds.allIds()), posted(1));
 	}
@@ -98,8 +108,8 @@ public class PartnerClaimsTest
 	@Test
 	public void aForcedClaimIsPostedAgain()
 	{
-		claims.publish(true, false);
-		claims.publish(true, true);
+		publish(true, false);
+		publish(true, true);
 
 		assertEquals(List.of(ServantIds.allIds(), ServantIds.allIds()), posted(2));
 	}
@@ -107,8 +117,8 @@ public class PartnerClaimsTest
 	@Test
 	public void notClaimingAfterAClaimPostsTheEmptySet()
 	{
-		claims.publish(true, false);
-		claims.publish(false, false);
+		publish(true, false);
+		publish(false, false);
 
 		assertEquals(List.of(ServantIds.allIds(), Collections.emptySet()), posted(2));
 	}
@@ -116,10 +126,10 @@ public class PartnerClaimsTest
 	@Test
 	public void notClaimingFromTheStartPostsNothingUnlessForced()
 	{
-		claims.publish(false, false);
+		publish(false, false);
 		verifyNoInteractions(eventBus);
 
-		claims.publish(false, true);
+		publish(false, true);
 		assertEquals(List.of(Collections.emptySet()), posted(1));
 	}
 
@@ -134,10 +144,10 @@ public class PartnerClaimsTest
 	@Test
 	public void afterAWithdrawTheNextClaimIsPostedUnforced()
 	{
-		claims.publish(true, false);
+		publish(true, false);
 		claims.withdraw();
 		// A restart's first recheck claims again without needing to be forced
-		claims.publish(true, false);
+		publish(true, false);
 
 		assertEquals(List.of(ServantIds.allIds(), Collections.emptySet(), ServantIds.allIds()), posted(3));
 	}

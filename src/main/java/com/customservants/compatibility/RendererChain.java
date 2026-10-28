@@ -24,6 +24,7 @@
  */
 package com.customservants.compatibility;
 
+import com.customservants.ServantDrawCallbacks;
 import java.util.Set;
 import java.util.function.Supplier;
 import net.runelite.api.hooks.DrawCallbacks;
@@ -45,7 +46,7 @@ public final class RendererChain
 	static final Set<String> KNOWN_DECORATORS = Set.of(
 		"com.customnpcmodels.CustomDrawCallbacks",
 		"com.retronpcswapper.RetroDrawCallbacks",
-		"com.customservants.ServantDrawCallbacks");
+		ServantDrawCallbacks.class.getName());
 
 	/** More than the known decorators could ever stack; stops a pathological chain. */
 	private static final int MAX_DEPTH = 8;

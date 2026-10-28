@@ -24,6 +24,8 @@
  */
 package com.customservants.compatibility;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
@@ -48,20 +50,14 @@ import net.runelite.client.plugins.PluginManager;
 @Singleton
 public class PartnerStashProbe
 {
-	/** Retro NPC Swapper's plugin class name. */
-	static final String RETRO_PLUGIN_CLASS = "com.retronpcswapper.RetroNpcSwapperPlugin";
-
-	// Mirrors RetroNpcConfig.GROUP in Retro NPC Swapper, which cannot be referenced from here
-	/** Retro NPC Swapper's config group. */
-	static final String RETRO_CONFIG_GROUP = "retronpcswapper";
-
 	/** Each partner plugin's class name, mapped to the config group it keeps its stash in. */
-	static final Map<String, String> PARTNER_STASH_GROUPS = Map.of(
-		RETRO_PLUGIN_CLASS, RETRO_CONFIG_GROUP,
-		"com.customnpcmodels.CustomNpcModelsPlugin", "customnpcmodels");
+	static final Map<String, String> PARTNER_STASH_GROUPS = stashGroups();
 
-	/** The key both partners persist their stashed Interact Highlight hover setting under. */
-	static final String STASH_KEY = "interactHighlightStash_npcShowHover";
+	/**
+	 * The key both partners persist their stashed Interact Highlight hover setting under, the same
+	 * key this plugin stashes it under in its own group.
+	 */
+	static final String STASH_KEY = InteractHighlightCompat.stashKey("npcShowHover");
 
 	private final ConfigManager configManager;
 	private final PluginManager pluginManager;
@@ -77,6 +73,16 @@ public class PartnerStashProbe
 	public boolean isPartnerSuppressing()
 	{
 		return anySuppressing(PARTNER_STASH_GROUPS, this::isActiveByClassName, configManager::getConfiguration);
+	}
+
+	private static Map<String, String> stashGroups()
+	{
+		Map<String, String> groups = new LinkedHashMap<>();
+		for (Partner partner : Partner.values())
+		{
+			groups.put(partner.getPluginClass(), partner.getStashGroup());
+		}
+		return Collections.unmodifiableMap(groups);
 	}
 
 	/** Whether the plugin of class {@code className} is loaded and running. */

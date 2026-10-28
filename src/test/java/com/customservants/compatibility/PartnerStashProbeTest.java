@@ -105,8 +105,8 @@ public class PartnerStashProbeTest
 	@Test
 	public void retroConstantsMirrorRetrosConfig()
 	{
-		assertEquals(RETRO_CLASS, PartnerStashProbe.RETRO_PLUGIN_CLASS);
-		assertEquals("retronpcswapper", PartnerStashProbe.RETRO_CONFIG_GROUP);
+		assertEquals(RETRO_CLASS, Partner.RETRO_NPC_SWAPPER.getPluginClass());
+		assertEquals("retronpcswapper", Partner.RETRO_NPC_SWAPPER.getStashGroup());
 	}
 
 	@Test

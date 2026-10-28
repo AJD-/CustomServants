@@ -27,6 +27,7 @@ package com.customservants.compatibility;
 import com.customservants.ServantIds;
 import java.util.Collections;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,9 @@ public class PartnerClaims
 {
 	private final EventBus eventBus;
 
+	// Whether servant models are being drawn right now, so the servants are ours to claim
+	private volatile BooleanSupplier claiming = () -> false;
+
 	// The NPC ids last claimed, so an unchanged set is not posted again. Volatile, as withdraw may
 	// run on any thread.
 	private volatile Set<Integer> posted = Collections.emptySet();
@@ -53,12 +57,21 @@ public class PartnerClaims
 	}
 
 	/**
+	 * Arms the claims for this start. {@code claiming} says whether servant models are actually
+	 * being drawn right now. Called from startUp, before anything can publish.
+	 */
+	public void start(BooleanSupplier claiming)
+	{
+		this.claiming = claiming;
+	}
+
+	/**
 	 * Posts our claims: {@link ServantIds#allIds()} when claiming, else the empty set, so Retro NPC
 	 * Swapper can have the servants back. Posted only when the set changed, unless {@code always}.
 	 */
-	public void publish(boolean claiming, boolean always)
+	public void publish(boolean always)
 	{
-		Set<Integer> claims = claiming ? ServantIds.allIds() : Collections.emptySet();
+		Set<Integer> claims = claiming.getAsBoolean() ? ServantIds.allIds() : Collections.emptySet();
 
 		if (!always && claims.equals(posted))
 		{
