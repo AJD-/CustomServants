@@ -64,7 +64,7 @@ public interface CustomServantsConfig extends Config
 			+ "this is on and an override is being drawn, Interact Highlight's own <b>NPCs: Show on "
 			+ "hover</b> and <b>Show on interact</b> are turned off and this plugin draws those "
 			+ "outlines in their place, using that plugin's own colors and border settings. Both are "
-			+ "turned back on when this plugin stops.</body></html>",
+			+ "put back to your own settings when this plugin stops.</body></html>",
 		section = compatibilitySection,
 		position = 1
 	)

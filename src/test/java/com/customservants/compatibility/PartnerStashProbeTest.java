@@ -103,6 +103,41 @@ public class PartnerStashProbeTest
 	}
 
 	@Test
+	public void retroConstantsMirrorRetrosConfig()
+	{
+		assertEquals(RETRO_CLASS, PartnerStashProbe.RETRO_PLUGIN_CLASS);
+		assertEquals("retronpcswapper", PartnerStashProbe.RETRO_CONFIG_GROUP);
+		assertEquals("overrideInteractHighlight", PartnerStashProbe.RETRO_OVERRIDE_KEY);
+	}
+
+	/** A config lookup holding {@code value} under Retro's override key only. */
+	private static BiFunction<String, String, String> retroOverride(String value)
+	{
+		return (group, key) -> RETRO_GROUP.equals(group) && "overrideInteractHighlight".equals(key) ? value : null;
+	}
+
+	@Test
+	public void retroRunningWithItsOptionTickedHasTheFixEnabled()
+	{
+		assertTrue(PartnerStashProbe.retroOutlineFixEnabled(RETRO_CLASS::equals, retroOverride("true")));
+	}
+
+	@Test
+	public void retroRunningWithItsOptionUntickedOrUnsetDoesNot()
+	{
+		assertFalse(PartnerStashProbe.retroOutlineFixEnabled(RETRO_CLASS::equals, retroOverride("false")));
+		assertFalse(PartnerStashProbe.retroOutlineFixEnabled(RETRO_CLASS::equals, retroOverride(null)));
+	}
+
+	@Test
+	public void retroStoppedWithItsOptionTickedDoesNot()
+	{
+		assertFalse(PartnerStashProbe.retroOutlineFixEnabled(className -> false, retroOverride("true")));
+		// Only Retro counts, not the sibling plugin
+		assertFalse(PartnerStashProbe.retroOutlineFixEnabled(CNM_CLASS::equals, retroOverride("true")));
+	}
+
+	@Test
 	public void noPartnersMeansNoSuppression()
 	{
 		assertFalse(PartnerStashProbe.anySuppressing(Collections.emptyMap(),

@@ -28,6 +28,7 @@ import com.customservants.compatibility.InteractHighlightCompat;
 import com.customservants.compatibility.InteractTargetTracker;
 import com.customservants.compatibility.ModelSwapProtocol;
 import com.customservants.compatibility.PartnerClaims;
+import com.customservants.compatibility.PartnerStashProbe;
 import com.google.inject.Provides;
 import java.util.HashMap;
 import java.util.Map;
@@ -173,11 +174,12 @@ public class CustomServantsPlugin extends Plugin
 			finally
 			{
 				attachment.detach();
-				// active is false, so canSwap is too: puts Interact Highlight's NPC outlines back,
-				// removes our overlay and clears the outliner
+				// Unconditionally, not through sync(): a suppress() that threw partway leaves the
+				// suppression on with takenOver false, which sync() would not repair. Puts Interact
+				// Highlight's NPC outlines back, removes our overlay and clears the outliner
 				try
 				{
-					outlineTakeover.sync();
+					outlineTakeover.letGo();
 				}
 				catch (RuntimeException e)
 				{
@@ -216,6 +218,13 @@ public class CustomServantsPlugin extends Plugin
 		// First, as it is in Interact Highlight's group: the user turning its NPC outlines back on
 		if (outlineTakeover.handleUserOverride(event))
 		{
+			return;
+		}
+		// Retro NPC Swapper's own fix ticked or unticked: we yield the outlines to it while it is on
+		if (PartnerStashProbe.RETRO_CONFIG_GROUP.equals(event.getGroup())
+			&& PartnerStashProbe.RETRO_OVERRIDE_KEY.equals(event.getKey()))
+		{
+			clientThread.invoke(outlineTakeover::sync);
 			return;
 		}
 		// The stash is written from inside suppress() and restore(), and changes nothing a servant

@@ -42,7 +42,7 @@ chathead, until a supported renderer holds the renderer slot.
 - **Interact Highlight**: the **Compatibility** section has a `Fix Interact Highlight outlines`
   checkbox, off by default. The servant is swapped as it is drawn, so anything outlining it through
   the API outlines the original model, which no longer matches what is on screen. With the
-  `Interact Highlight` plugin on and the checkbox ticked, while an override is being drawn this
+  `Interact Highlight` plugin on and the checkbox ticked, while an override is selected this
   plugin _turns off_ that plugin's own NPC **Show on hover** and **Show on interact** settings and
   draws those outlines itself: around the override for your servant, and as usual for every other
   NPC, using Interact Highlight's colors and border settings. Its object, ground item and player
@@ -55,7 +55,10 @@ chathead, until a supported renderer holds the renderer slot.
 - With Retro NPC Swapper's interop build the checkbox can be on in either plugin or both: only one
   of them draws the NPC outlines at a time, each around whichever plugin's model is on screen. If
   another plugin with its own `Fix Interact Highlight outlines` option is running and does not
-  coordinate with these two, turn the option on in only one of them.
+  coordinate with these two, turn the option on in only one of those plugins. If Retro NPC Swapper
+  is running with its own `Fix Interact Highlight outlines` option ticked, it draws the outlines
+  instead (including its scenery outlines), and this plugin's checkbox does nothing until that
+  option is unticked.
 
 <details>
 <summary>How it works</summary>
@@ -86,3 +89,4 @@ chathead, until a supported renderer holds the renderer slot.
   through house walls.
 - The three skeletal-animated deities, Crondis, Scabaras and Apmeken, are the overrides most likely
   to need adjustment after in-game testing.
+- The outline follows the drawn model; the clickbox does not.

@@ -65,6 +65,12 @@ import net.runelite.client.ui.overlay.OverlayManager;
  * <li>The one unguarded case is when we already own the outlines and a partner that does not
  * cooperate takes them over as well. The README documents it.</li>
  * </ul>
+ * <p>
+ * Except that this plugin always yields to Retro NPC Swapper while it runs with its own
+ * {@code Fix Interact Highlight outlines} option ticked: it lets go if it has the outlines and never
+ * takes them. Retro's fix also outlines scenery objects, which this plugin cannot draw, and it still
+ * outlines our servants through the poser we publish. Letting go publishes that we no longer own the
+ * outlines, so Retro takes them over with the user's real settings restored.
  */
 @Singleton
 @Slf4j
@@ -140,27 +146,40 @@ class OutlineTakeover
 		boolean wanted = config.overrideInteractHighlight()
 			&& canSwap.getAsBoolean()
 			&& interactHighlight.isInteractHighlightActive();
-		boolean next = shouldTakeOver(wanted, takenOver, partnerOutlines.isHandshakeDone(), isPartnerOwning());
+		boolean yieldToPartner = stashProbe.isRetroOutlineFixEnabled();
+		boolean next = shouldTakeOver(wanted, takenOver, partnerOutlines.isHandshakeDone(), isPartnerOwning(),
+			yieldToPartner);
 
 		if (next == takenOver)
 		{
 			return;
 		}
 
-		if (next)
+		if (!next)
 		{
-			interactHighlight.suppress();
-			overlayManager.add(interactHighlightOverlay);
-		}
-		else
-		{
-			interactHighlight.restore();
-			overlayManager.remove(interactHighlightOverlay);
-			outliner.clear();
+			letGo();
+			return;
 		}
 
+		interactHighlight.suppress();
+		overlayManager.add(interactHighlightOverlay);
+
 		// Last, so a failure to write config does not leave us recorded as having taken over
-		takenOver = next;
+		takenOver = true;
+		publish(false);
+	}
+
+	/**
+	 * Hands the outlines back whether or not we think we have them: puts Interact Highlight's
+	 * settings back (a no-op unless suppressing), removes our overlay and clears the outliner.
+	 */
+	void letGo()
+	{
+		interactHighlight.restore();
+		overlayManager.remove(interactHighlightOverlay);
+		outliner.clear();
+
+		takenOver = false;
 		publish(false);
 	}
 
@@ -181,10 +200,15 @@ class OutlineTakeover
 	 * user's real setting would never come back. Whichever took them first keeps them until it lets
 	 * go, and none takes them before its handshake, when it cannot yet know whether a partner
 	 * already has.
+	 * <p>
+	 * Whatever else holds, none at all while {@code yieldToPartner}: Retro NPC Swapper's fix, ticked
+	 * there, also outlines scenery objects, which this plugin cannot draw, so it is let go even if
+	 * this plugin already has the outlines.
 	 */
-	static boolean shouldTakeOver(boolean wanted, boolean takenOver, boolean handshakeDone, boolean partnerOwning)
+	static boolean shouldTakeOver(boolean wanted, boolean takenOver, boolean handshakeDone, boolean partnerOwning,
+		boolean yieldToPartner)
 	{
-		return wanted && handshakeDone && (takenOver || !partnerOwning);
+		return wanted && handshakeDone && !yieldToPartner && (takenOver || !partnerOwning);
 	}
 
 	/**
@@ -204,7 +228,7 @@ class OutlineTakeover
 
 	/**
 	 * Tells the partners we have let go of the outlines and the poser, as the plugin stops. Called
-	 * after {@link #sync} has handed the outlines back, so a partner that takes them over stashes
+	 * after {@link #letGo} has handed the outlines back, so a partner that takes them over stashes
 	 * Interact Highlight's restored settings rather than our false ones.
 	 */
 	void withdraw()
