@@ -14,7 +14,7 @@ repositories {
 }
 
 def runeLiteVersion = 'latest.release'
-def pluginMainClass = 'com.example.ExamplePluginTest'
+def pluginMainClass = 'com.customservants.CustomServantsPluginTest'
 
 dependencies {
 	compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
@@ -22,12 +22,20 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok:1.18.30'
 	annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
+	testCompileOnly 'org.projectlombok:lombok:1.18.30'
+	testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
+
 	testImplementation 'junit:junit:4.12'
+	testImplementation 'org.mockito:mockito-core:4.11.0'
 	testImplementation group: 'net.runelite', name:'client', version: runeLiteVersion
 	testImplementation group: 'net.runelite', name:'jshell', version: runeLiteVersion
+	// Dev-only: reads the live OSRS cache for the dumpNpcDefinitions task. Test scope, so it is not in the hub jar.
+	testImplementation(group: 'net.runelite', name: 'cache', version: runeLiteVersion) {
+		exclude group: 'org.slf4j', module: 'slf4j-simple'
+	}
 }
 
-group = 'com.example'
+group = 'com.customservants'
 
 tasks.withType(JavaCompile).configureEach {
 	options.encoding = 'UTF-8'
@@ -66,4 +74,20 @@ tasks.register('shadowJar', Jar) {
 	group = BasePlugin.BUILD_GROUP
 	archiveClassifier.set('shadow')
 	archiveFileName.set("${rootProject.name}-${project.version}-all.jar")
+}
+
+// Prints NPC definitions from the live OSRS cache, eg:
+//   ./gradlew dumpNpcDefinitions            (every override and servant NPC the plugin knows)
+//   ./gradlew dumpNpcDefinitions -Pnpc=1173,thurgo -PcacheDir=/path/to/LIVE
+tasks.register('dumpNpcDefinitions', JavaExec) {
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.customservants.tools.NpcDefinitionDumper'
+	workingDir = rootDir
+
+	if (project.hasProperty('npc')) {
+		args project.property('npc').toString().split(',')
+	}
+	if (project.hasProperty('cacheDir')) {
+		systemProperty 'customservants.cacheDir', project.property('cacheDir')
+	}
 }
