@@ -288,7 +288,7 @@ public class ChatheadSwapper
 	private Target targetFor(int npcId)
 	{
 		int chathead = modelCache.getChatheadNpcId();
-		if (!canSwap.getAsBoolean() || !ServantIds.isServant(npcId) || chathead < 0)
+		if (!canSwap.getAsBoolean() || !modelCache.isOurs(npcId) || chathead < 0)
 		{
 			return null;
 		}

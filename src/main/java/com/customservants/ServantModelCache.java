@@ -24,6 +24,7 @@
  */
 package com.customservants;
 
+import com.customservants.compatibility.ClaimedNpcs;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -61,6 +62,9 @@ public class ServantModelCache
 
 	@Inject
 	private Client client;
+
+	@Inject
+	private ClaimedNpcs claimed;
 
 	@Getter
 	private ServantOverride override = ServantOverride.DEFAULT;
@@ -236,6 +240,15 @@ public class ServantModelCache
 	}
 
 	/**
+	 * Whether an NPC is one this plugin draws: a servant no partner claims. A servant Custom NPC
+	 * Models claims is left to it entirely - body, animations, chathead and claim.
+	 */
+	public boolean isOurs(int npcId)
+	{
+		return ServantIds.isServant(npcId) && !claimed.isClaimed(npcId);
+	}
+
+	/**
 	 * Render path: poses the base model with the servant's current animation state. One servant
 	 * lookup and one {@code applyTransformations} call per frame.
 	 *
@@ -252,7 +265,7 @@ public class ServantModelCache
 			return null;
 		}
 		ServantIds.Servant s = ServantIds.get(npc.getId());
-		if (s == null)
+		if (s == null || claimed.isClaimed(npc.getId()))
 		{
 			return null;
 		}

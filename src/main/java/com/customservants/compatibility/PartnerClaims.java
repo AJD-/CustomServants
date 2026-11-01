@@ -26,6 +26,7 @@ package com.customservants.compatibility;
 
 import com.customservants.ServantIds;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import javax.inject.Inject;
@@ -42,6 +43,7 @@ import net.runelite.client.eventbus.EventBus;
 public class PartnerClaims
 {
 	private final EventBus eventBus;
+	private final ClaimedNpcs claimed;
 
 	// Whether servant models are being drawn right now, so the servants are ours to claim
 	private volatile BooleanSupplier claiming = () -> false;
@@ -51,9 +53,10 @@ public class PartnerClaims
 	private volatile Set<Integer> posted = Collections.emptySet();
 
 	@Inject
-	PartnerClaims(EventBus eventBus)
+	PartnerClaims(EventBus eventBus, ClaimedNpcs claimed)
 	{
 		this.eventBus = eventBus;
+		this.claimed = claimed;
 	}
 
 	/**
@@ -66,12 +69,13 @@ public class PartnerClaims
 	}
 
 	/**
-	 * Posts our claims: {@link ServantIds#allIds()} when claiming, else the empty set, so Retro NPC
-	 * Swapper can have the servants back. Posted only when the set changed, unless {@code always}.
+	 * Posts our claims: {@link ServantIds#allIds()} less any a partner claims when claiming, else the
+	 * empty set, so Retro NPC Swapper can have the servants back. Posted only when the set changed,
+	 * unless {@code always}.
 	 */
 	public void publish(boolean always)
 	{
-		Set<Integer> claims = claiming.getAsBoolean() ? ServantIds.allIds() : Collections.emptySet();
+		Set<Integer> claims = claiming.getAsBoolean() ? ours() : Collections.emptySet();
 
 		if (!always && claims.equals(posted))
 		{
@@ -81,6 +85,19 @@ public class PartnerClaims
 		posted = claims;
 		log.debug("Claiming {} servant NPC id(s)", claims.size());
 		eventBus.post(ModelSwapProtocol.claimsMessage(claims));
+	}
+
+	/** The servants no partner claims. */
+	private Set<Integer> ours()
+	{
+		Set<Integer> yielded = claimed.claimed();
+		if (yielded.isEmpty())
+		{
+			return ServantIds.allIds();
+		}
+		Set<Integer> ours = new HashSet<>(ServantIds.allIds());
+		ours.removeAll(yielded);
+		return Collections.unmodifiableSet(ours);
 	}
 
 	/**
