@@ -113,9 +113,6 @@ public class CustomServantsPlugin extends Plugin
 		partnerClaims.start(this::canSwap);
 		clientThread.invoke(() ->
 		{
-			// First: a session that died while suppressing left Interact Highlight's NPC outlines
-			// off, and that is put right before anything below can fail
-			outlineTakeover.restoreStaleStash();
 			modelCache.setOverride(config.servantOverride());
 			attach();
 			// Built now, not only on a servant spawn, so the chathead NPC is resolved before any

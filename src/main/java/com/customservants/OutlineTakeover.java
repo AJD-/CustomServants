@@ -245,6 +245,7 @@ class OutlineTakeover
 			log.debug("Handshake done; {} the outlines", isPartnerOwning() ? "a partner draws" : "no partner draws");
 		}
 		partnerOutlines.setHandshakeDone();
+		restoreStaleStashIfIdle();
 		publish(true);
 		sync();
 	}
@@ -300,16 +301,30 @@ class OutlineTakeover
 	{
 		// The carrier may still hold a model a partner posed
 		outliner.clear();
+		restoreStaleStashIfIdle();
 		sync();
 	}
 
 	/**
-	 * A session that died while suppressing left Interact Highlight's NPC outlines off. Puts them
-	 * back, before the next {@link #sync} decides whether to suppress again.
+	 * Whether a stash left by a session that died while suppressing can be put back: not while this
+	 * plugin or a partner has the outlines, when the suppression is live and a restore would undo it
+	 * - and look to the partner like the user re-enabling Interact Highlight's outlines.
 	 */
-	void restoreStaleStash()
+	static boolean shouldRestoreStaleStash(boolean takenOver, boolean partnerOwning)
 	{
-		interactHighlight.restoreStaleStash();
+		return !takenOver && !partnerOwning;
+	}
+
+	/**
+	 * Puts a stale stash back once the handshake says nobody has the outlines, before the next
+	 * {@link #sync} decides whether to suppress again.
+	 */
+	private void restoreStaleStashIfIdle()
+	{
+		if (partnerOutlines.isHandshakeDone() && shouldRestoreStaleStash(takenOver, isPartnerOwning()))
+		{
+			interactHighlight.restoreStaleStash();
+		}
 	}
 
 	/**
@@ -323,7 +338,7 @@ class OutlineTakeover
 		interactHighlight.forget();
 		dropTakeover();
 
-		interactHighlight.restoreStaleStash();
+		restoreStaleStashIfIdle();
 		sync();
 		// sync() sees no change when the new profile is not taken over either, but a partner may
 		// still think we draw the outlines
