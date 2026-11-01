@@ -36,6 +36,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import org.junit.Before;
+import java.util.HashSet;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.Mockito.mock;
@@ -49,6 +50,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 public class PartnerClaimsTest
 {
 	private EventBus eventBus;
+	private ClaimedNpcs claimed;
 	private PartnerClaims claims;
 	// What the plugin's canSwap answers
 	private final AtomicBoolean claiming = new AtomicBoolean();
@@ -57,7 +59,8 @@ public class PartnerClaimsTest
 	public void setUp()
 	{
 		eventBus = mock(EventBus.class);
-		claims = new PartnerClaims(eventBus);
+		claimed = new ClaimedNpcs();
+		claims = new PartnerClaims(eventBus, claimed);
 		claims.start(claiming::get);
 	}
 
@@ -94,6 +97,19 @@ public class PartnerClaimsTest
 		publish(true, false);
 
 		assertEquals(List.of(ServantIds.allIds()), posted(1));
+	}
+
+	@Test
+	public void aServantAPartnerClaimsIsNotClaimedByUs()
+	{
+		int yielded = ServantIds.allIds().iterator().next();
+		claimed.put(ModelSwapProtocol.SOURCE_CUSTOM_NPC_MODELS, Set.of(yielded));
+
+		publish(true, false);
+
+		Set<Integer> expected = new HashSet<>(ServantIds.allIds());
+		expected.remove(yielded);
+		assertEquals(List.of(expected), posted(1));
 	}
 
 	@Test

@@ -24,6 +24,7 @@
  */
 package com.customservants;
 
+import com.customservants.compatibility.ClaimedNpcs;
 import com.customservants.compatibility.InteractHighlightCompat;
 import com.customservants.compatibility.InteractTargetTracker;
 import com.customservants.compatibility.ModelSwapProtocol;
@@ -32,6 +33,7 @@ import com.customservants.compatibility.PartnerClaims;
 import com.google.inject.Provides;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -87,6 +89,9 @@ public class CustomServantsPlugin extends Plugin
 	private PartnerClaims partnerClaims;
 
 	@Inject
+	private ClaimedNpcs claimedNpcs;
+
+	@Inject
 	private OutlineTakeover outlineTakeover;
 
 	@Inject
@@ -134,6 +139,7 @@ public class CustomServantsPlugin extends Plugin
 		// Before the client thread work, so Retro NPC Swapper gets the servants back even if it
 		// never runs
 		partnerClaims.withdraw();
+		claimedNpcs.clear();
 		log.info("Custom Servants stopped");
 		eventBus.unregister(chatheadSwapper);
 		eventBus.unregister(targetTracker);
@@ -338,6 +344,7 @@ public class CustomServantsPlugin extends Plugin
 			}
 			else
 			{
+				forgetClaims(partner.getSource());
 				outlineTakeover.onPartnerStopped(partner.getSource());
 			}
 		}
@@ -370,6 +377,29 @@ public class CustomServantsPlugin extends Plugin
 		if (optOutFrom != null)
 		{
 			outlineTakeover.onPartnerOptOut(optOutFrom);
+			return;
+		}
+
+		String claimsFrom = ModelSwapProtocol.partnerSource(event, ModelSwapProtocol.CLAIMS);
+		Set<Integer> claims = claimsFrom == null ? null : ModelSwapProtocol.readClaims(event, claimsFrom);
+		if (claims == null || !active || !claimedNpcs.put(claimsFrom, claims))
+		{
+			return;
+		}
+
+		log.debug("{} claims {} NPC id(s); {} yielded in all", claimsFrom, claims.size(), claimedNpcs.claimed().size());
+		// Hand back servants no longer claimed, and let go of the ones now claimed. Deferred because a
+		// partner can post this from its shutDown, off the client thread.
+		clientThread.invoke(this::recheckLoadedNpcs);
+	}
+
+	/** Drops what a partner claimed as it stops, and takes those servants back. */
+	private void forgetClaims(String source)
+	{
+		if (claimedNpcs.remove(source))
+		{
+			log.debug("{} stopped; its claimed servants are ours again", source);
+			clientThread.invoke(this::recheckLoadedNpcs);
 		}
 	}
 
@@ -460,7 +490,7 @@ public class CustomServantsPlugin extends Plugin
 		// Not a servant (eg an index that changed into a non-servant), or nothing to draw it as. Same
 		// rig: the servant's own sequences drive the model. Unknown stand: the base is drawn unposed,
 		// so the animations are left alone.
-		if (s == null || !attachment.isAttached() || !modelCache.ensureBuilt()
+		if (s == null || !modelCache.isOurs(npc.getId()) || !attachment.isAttached() || !modelCache.ensureBuilt()
 			|| s.getRig() == ov.getRig() || ov.getStandAnimation() == -1)
 		{
 			resetNpc(npc);
