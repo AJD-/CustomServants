@@ -23,6 +23,11 @@ Draws your POH servant as another NPC (chathead included)
 - Gnome Child
 - Gnome Cheerleader
 - Ali Morrisane
+- KGP Agent
+- Clay Golem
+- TzHaar-Xil
+- TzHaar-Mej
+- Postie Pete
 
 ![config](img/configui.png)
 
