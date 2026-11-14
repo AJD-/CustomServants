@@ -57,12 +57,17 @@ public class ServantOverrideTest
 		"Thurgo",
 		"Gnome Child",
 		"Gnome Cheerleader",
-		"Ali Morrisane");
+		"Ali Morrisane",
+		"KGP Agent",
+		"Clay Golem",
+		"TzHaar-Xil",
+		"TzHaar-Mej",
+		"Postie Pete");
 
 	@Test
-	public void hasEighteenConstantsWithDefaultFirst()
+	public void hasTwentyThreeConstantsWithDefaultFirst()
 	{
-		assertEquals(18, ServantOverride.values().length);
+		assertEquals(23, ServantOverride.values().length);
 		assertEquals(ServantOverride.DEFAULT, ServantOverride.values()[0]);
 	}
 
@@ -207,13 +212,20 @@ public class ServantOverrideTest
 	}
 
 	@Test
-	public void onlyCrondisHasNonZeroLighting()
+	public void lightingMatchesTheCache()
 	{
 		assertEquals(20, ServantOverride.CRONDIS.getAmbient());
 		assertEquals(20, ServantOverride.CRONDIS.getContrast());
+		assertEquals(30, ServantOverride.TZHAAR_XIL.getAmbient());
+		assertEquals(0, ServantOverride.TZHAAR_XIL.getContrast());
+		assertEquals(10, ServantOverride.TZHAAR_MEJ.getAmbient());
+		assertEquals(0, ServantOverride.TZHAAR_MEJ.getContrast());
+
+		Set<ServantOverride> lit = new HashSet<>(Arrays.asList(ServantOverride.CRONDIS,
+			ServantOverride.TZHAAR_XIL, ServantOverride.TZHAAR_MEJ));
 		for (ServantOverride override : ServantOverride.values())
 		{
-			if (override != ServantOverride.CRONDIS)
+			if (!lit.contains(override))
 			{
 				assertEquals(override + " ambient", 0, override.getAmbient());
 				assertEquals(override + " contrast", 0, override.getContrast());

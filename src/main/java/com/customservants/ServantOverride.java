@@ -88,7 +88,17 @@ public enum ServantOverride
 	GNOME_CHEERLEADER("Gnome Cheerleader", new int[]{NpcID.GNOMECHEERLEADER},
 		Rig.OTHER, AnimationID.GNOME_READY, AnimationID.GNOME_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
 	ALI_MORRISANE("Ali Morrisane", new int[]{NpcID.FEUD_ALI_M},
-		Rig.HUMAN, AnimationID.HUMAN_READY, AnimationID.HUMAN_WALK_F, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP);
+		Rig.HUMAN, AnimationID.HUMAN_READY, AnimationID.HUMAN_WALK_F, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
+	KGP_AGENT("KGP Agent", new int[]{NpcID.PENG_KGP},
+		Rig.OTHER, AnimationID.PENG_GENTOO_READY, AnimationID.PENG_GENTOO_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
+	CLAY_GOLEM("Clay Golem", new int[]{NpcID.AGRITH_GOLEM_THRONEROOM, NpcID.AGRITH_GOLEM_SIGIL, NpcID.GOLEM_FIXED_GOLEM},
+		Rig.OTHER, AnimationID.CLAY_GOLEM_READY, AnimationID.CLAY_GOLEM_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
+	TZHAAR_XIL("TzHaar-Xil", new int[]{NpcID.TZHAAR_XIL3, NpcID.TZHAAR_XIL6},
+		Rig.OTHER, AnimationID.THZAAR_READY, AnimationID.THZAAR_WALK, 30, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
+	TZHAAR_MEJ("TzHaar-Mej", new int[]{NpcID.TZHAAR_MEJ1},
+		Rig.OTHER, AnimationID.THZAAR_STAFF_READY, AnimationID.THZAAR_STAFF_WALK, 10, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP),
+	POSTIE_PETE("Postie Pete", new int[]{NpcID.POSTIE_PETE},
+		Rig.OTHER, AnimationID.POSTIE_PETE_READY, AnimationID.POSTIE_PETE_WALK, 0, 0, Unknown.NO_SHORTS, Unknown.NO_SHORTS, ChatheadEmote.KEEP);
 
 	/**
 	 * Holder so the enum constants above can use the empty array without an illegal forward reference.
