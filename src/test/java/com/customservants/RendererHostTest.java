@@ -94,6 +94,21 @@ public class RendererHostTest
 	}
 
 	@Test
+	public void testTheGpuExperimentalRendererIsRecognised()
+	{
+		assertTrue(RendererAttachment.isGpuExperimentalRenderer("info.sigterm.plugins.gpu.GpuPlugin"));
+	}
+
+	@Test
+	public void testGpuExperimentalLookalikesAreDeclined()
+	{
+		// Core GPU is matched by instance, and an old fork used a different package
+		assertFalse(RendererAttachment.isGpuExperimentalRenderer("net.runelite.client.plugins.gpu.GpuPlugin"));
+		assertFalse(RendererAttachment.isGpuExperimentalRenderer("info.sigterm.plugins.gpue.GpuPluginExperimental"));
+		assertFalse(RendererAttachment.isGpuExperimentalRenderer("info.sigterm.plugins.gpu.SceneUploader"));
+	}
+
+	@Test
 	public void testOtherHdClassesAreDeclined()
 	{
 		// The plugin itself never holds the slot, and a lookalike package must not slip through

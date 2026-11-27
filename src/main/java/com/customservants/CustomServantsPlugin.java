@@ -31,7 +31,9 @@ import com.customservants.compatibility.ModelSwapProtocol;
 import com.customservants.compatibility.Partner;
 import com.customservants.compatibility.PartnerClaims;
 import com.google.inject.Provides;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.inject.Inject;
@@ -45,6 +47,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcChanged;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
+import net.runelite.api.events.PostClientTick;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
@@ -294,6 +297,19 @@ public class CustomServantsPlugin extends Plugin
 	}
 
 	@Subscribe
+	public void onPostClientTick(PostClientTick event)
+	{
+		// Only servants drawn as an override on another rig are held, so this is free for everyone
+		// else. At the end of every client tick: by then the client has both rewritten the slots and
+		// picked the servant's pose from them, and nothing is drawn before the next one. Until the
+		// override is written back the servant moves on sequences the override model cannot play
+		if (!originalStates.isEmpty())
+		{
+			reapplyOverwritten();
+		}
+	}
+
+	@Subscribe
 	public void onGameTick(GameTick event)
 	{
 		// Cheap guard: the GPU plugin and 117 HD overwrite the draw callbacks slot when they restart,
@@ -485,6 +501,12 @@ public class CustomServantsPlugin extends Plugin
 	 */
 	void processNpc(NPC npc)
 	{
+		processNpc(npc, false);
+	}
+
+	/** @param rewritten whether the servant already showed the override and is to carry on as it was */
+	private void processNpc(NPC npc, boolean rewritten)
+	{
 		ServantIds.Servant s = ServantIds.get(npc.getId());
 		ServantOverride ov = modelCache.getOverride();
 		// Not a servant (eg an index that changed into a non-servant), or nothing to draw it as. Same
@@ -496,14 +518,72 @@ public class CustomServantsPlugin extends Plugin
 			resetNpc(npc);
 			return;
 		}
-		applyAnimationOverride(npc, ov);
+		if (rewritten)
+		{
+			reapplyAnimationOverride(npc, ov);
+		}
+		else
+		{
+			applyAnimationOverride(npc, ov);
+		}
+	}
+
+	/**
+	 * Writes the override's stand/walk over every pose and movement slot, and stands the servant at
+	 * the start of the stand.
+	 */
+	void applyAnimationOverride(NPC npc, ServantOverride ov)
+	{
+		int stand = ov.getStandAnimation();
+		writeOverrideSlots(npc, ov);
+		npc.setPoseAnimation(stand);
+		npc.setPoseAnimationFrame(0);
+		log.debug("Applied {} stand {} / walk {} to servant {} at index {}", ov, stand, ov.getEffectiveWalk(),
+			npc.getId(), npc.getIndex());
+	}
+
+	/**
+	 * Writes the override back over slots the client rewrote, without the servant breaking step: it
+	 * stays standing or walking as the client has it, from the frame the override last showed.
+	 * Standing it at the start of the stand instead, as a first apply does, restarts its animation
+	 * on every rewrite, which is about once a second while it runs an errand.
+	 */
+	private void reapplyAnimationOverride(NPC npc, ServantOverride ov)
+	{
+		int idx = npc.getIndex();
+		int stand = ov.getStandAnimation();
+		int walk = ov.getEffectiveWalk();
+		// All read before the slots are written over: the pose the client picked is one of them, and
+		// writing them replaces the snapshot holding where the override was last seen
+		int clientPose = npc.getPoseAnimation();
+		int clientFrame = npc.getPoseAnimationFrame();
+		boolean standing = clientPose == -1 || clientPose == npc.getIdlePoseAnimation()
+			|| clientPose == npc.getIdleRotateLeft() || clientPose == npc.getIdleRotateRight();
+		OriginalNpcState before = originalStates.get(idx);
+
+		writeOverrideSlots(npc, ov);
+		// Still one of the override's when the client has not picked a pose from the rewritten slots
+		// yet: nothing to carry over then
+		if (clientPose != stand && clientPose != walk)
+		{
+			int pose = standing ? stand : walk;
+			npc.setPoseAnimation(pose);
+			// Not the frame the client is on: it has stepped that by its own sequence, which wraps it
+			// to that sequence's length
+			npc.setPoseAnimationFrame(before == null ? 0 : before.frameToCarryOn(pose));
+		}
+		// Seen as it now is, should the next rewrite come within the next client tick
+		originalStates.get(idx).seen(npc.getPoseAnimation(), npc.getPoseAnimationFrame());
+		log.debug("Wrote {} back to servant {} at index {}: pose {} frame {} -> pose {} frame {} (cycle {}, tick {})",
+			ov, npc.getId(), idx, clientPose, clientFrame, npc.getPoseAnimation(), npc.getPoseAnimationFrame(),
+			client.getGameCycle(), client.getTickCount());
 	}
 
 	/**
 	 * Snapshots the servant's animations, unless it already shows the override's (the snapshot would
 	 * be of our own values), then writes the override's stand/walk over every pose and movement slot.
 	 */
-	void applyAnimationOverride(NPC npc, ServantOverride ov)
+	private void writeOverrideSlots(NPC npc, ServantOverride ov)
 	{
 		int idx = npc.getIndex();
 		int stand = ov.getStandAnimation();
@@ -516,7 +596,6 @@ public class CustomServantsPlugin extends Plugin
 
 		int walk = ov.getEffectiveWalk();
 		npc.setIdlePoseAnimation(stand);
-		npc.setPoseAnimation(stand);
 		npc.setIdleRotateLeft(stand);
 		npc.setIdleRotateRight(stand);
 		npc.setWalkAnimation(walk);
@@ -524,8 +603,70 @@ public class CustomServantsPlugin extends Plugin
 		npc.setWalkRotateLeft(walk);
 		npc.setWalkRotateRight(walk);
 		npc.setRunAnimation(walk);
-		npc.setPoseAnimationFrame(0);
-		log.debug("Applied {} stand {} / walk {} to servant {} at index {}", ov, stand, walk, npc.getId(), idx);
+	}
+
+	/**
+	 * Re-decides every overridden servant that no longer shows the override's stand/walk, and notes
+	 * the pose of those that do. While a servant runs an errand the client puts all of its pose and
+	 * movement slots back to its definition's about once a second, and no spawn or change event is
+	 * posted for that; left alone, the servant then moves on its own sequences and is drawn sliding
+	 * in the override's stand. Client thread only.
+	 */
+	private void reapplyOverwritten()
+	{
+		WorldView worldView = client.getTopLevelWorldView();
+		if (worldView == null)
+		{
+			return;
+		}
+
+		ServantOverride ov = modelCache.getOverride();
+		// Collected first: processNpc adds to and removes from originalStates
+		List<NPC> overwritten = null;
+		for (Map.Entry<Integer, OriginalNpcState> e : originalStates.entrySet())
+		{
+			NPC npc = worldView.npcs().byIndex(e.getKey());
+			if (npc == null)
+			{
+				continue;
+			}
+			if (showsOverride(npc, ov))
+			{
+				e.getValue().seen(npc.getPoseAnimation(), npc.getPoseAnimationFrame());
+				continue;
+			}
+			if (overwritten == null)
+			{
+				overwritten = new ArrayList<>();
+			}
+			overwritten.add(npc);
+		}
+		if (overwritten == null)
+		{
+			return;
+		}
+
+		for (NPC npc : overwritten)
+		{
+			log.debug("The client rewrote the animations of servant {} at index {} (idle {}, walk {}, run {})",
+				npc.getId(), npc.getIndex(), npc.getIdlePoseAnimation(), npc.getWalkAnimation(), npc.getRunAnimation());
+			processNpc(npc, true);
+		}
+	}
+
+	/** Whether every slot {@link #writeOverrideSlots} writes still holds what it wrote. */
+	static boolean showsOverride(NPC npc, ServantOverride ov)
+	{
+		int stand = ov.getStandAnimation();
+		int walk = ov.getEffectiveWalk();
+		return npc.getIdlePoseAnimation() == stand
+			&& npc.getIdleRotateLeft() == stand
+			&& npc.getIdleRotateRight() == stand
+			&& npc.getWalkAnimation() == walk
+			&& npc.getWalkRotate180() == walk
+			&& npc.getWalkRotateLeft() == walk
+			&& npc.getWalkRotateRight() == walk
+			&& npc.getRunAnimation() == walk;
 	}
 
 	/** Puts back the animations snapshotted for this NPC's index, if any. Client thread only. */

@@ -40,7 +40,7 @@ public interface CustomServantsConfig extends Config
 	@ConfigItem(
 		keyName = SERVANT_OVERRIDE,
 		name = "Override",
-		description = "Draws your house servant as another NPC, with that NPC's chathead in dialogue. Needs the GPU plugin or 117 HD.",
+		description = "Draws your house servant as another NPC, with that NPC's chathead in dialogue. Needs the GPU, GPU (experimental) or 117 HD plugin.",
 		position = 0
 	)
 	default ServantOverride servantOverride()

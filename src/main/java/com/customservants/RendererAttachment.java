@@ -49,6 +49,9 @@ class RendererAttachment
 
 	private static final String HD_PLUGIN_CLASS = "rs117.hd.HdPlugin";
 
+	/** The Hub's GPU (experimental) plugin, which holds the slot itself. */
+	private static final String GPU_EXPERIMENTAL_CLASS = "info.sigterm.plugins.gpu.GpuPlugin";
+
 	private final Client client;
 
 	private final PluginManager pluginManager;
@@ -87,7 +90,7 @@ class RendererAttachment
 
 	/**
 	 * Takes over the client's draw callbacks slot by wrapping whichever supported renderer holds it:
-	 * the GPU plugin, or 117 HD's zone renderer - directly, or beneath a known decorator (Custom NPC
+	 * the GPU plugin, GPU (experimental), or 117 HD's zone renderer - directly, or beneath a known decorator (Custom NPC
 	 * Models, Retro NPC Swapper).
 	 * <p>
 	 * Declines for anything else - no renderer at all, an unknown one, 117 HD's legacy renderer
@@ -180,12 +183,18 @@ class RendererAttachment
 	 * 117 HD is a Plugin Hub plugin loaded in its own classloader, so it is recognized by class
 	 * name alone - there is no compile or runtime dependency on it. The zone renderer package is
 	 * allowlisted rather than the legacy one denylisted, so a renderer 117 HD adds or renames later
-	 * is declined instead of wrapped blind.
+	 * is declined instead of wrapped blind. The Hub's GPU (experimental) is matched by exact class
+	 * name for the same reason.
 	 */
 	static boolean isSupportedHost(DrawCallbacks current, Plugin gpu)
 	{
 		DrawCallbacks renderer = RendererChain.base(current);
-		return renderer != null && (renderer == gpu || isHdZoneRenderer(renderer.getClass().getName()));
+		if (renderer == null)
+		{
+			return false;
+		}
+		String name = renderer.getClass().getName();
+		return renderer == gpu || isHdZoneRenderer(name) || isGpuExperimentalRenderer(name);
 	}
 
 	static boolean isHdZoneRenderer(String className)
@@ -193,11 +202,20 @@ class RendererAttachment
 		return className.startsWith(HD_ZONE_RENDERER_PACKAGE);
 	}
 
+	static boolean isGpuExperimentalRenderer(String className)
+	{
+		return GPU_EXPERIMENTAL_CLASS.equals(className);
+	}
+
 	/** Whether {@code plugin} is a renderer this attaches over, whose start or stop moves the slot. */
 	static boolean isRendererPlugin(Plugin plugin)
 	{
-		return plugin instanceof GpuPlugin
-			|| (plugin != null && HD_PLUGIN_CLASS.equals(plugin.getClass().getName()));
+		if (plugin == null)
+		{
+			return false;
+		}
+		String name = plugin.getClass().getName();
+		return plugin instanceof GpuPlugin || HD_PLUGIN_CLASS.equals(name) || isGpuExperimentalRenderer(name);
 	}
 
 	private Plugin findGpuPlugin()
