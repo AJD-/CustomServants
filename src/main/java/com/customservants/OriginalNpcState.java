@@ -28,7 +28,8 @@ import net.runelite.api.NPC;
 
 /**
  * Snapshot of a servant's original pose and movement animations, taken before an override's
- * sequences are written over them so the servant can be put back exactly as it was.
+ * sequences are written over them so the servant can be put back exactly as it was. Also keeps the
+ * pose the servant was last seen in under the override, for writing the override back to carry on.
  */
 class OriginalNpcState
 {
@@ -41,6 +42,9 @@ class OriginalNpcState
 	private final int walkRotateLeft;
 	private final int walkRotateRight;
 	private final int runAnimation;
+
+	private int seenPose = -1;
+	private int seenFrame;
 
 	private OriginalNpcState(NPC npc)
 	{
@@ -75,6 +79,19 @@ class OriginalNpcState
 		npc.setWalkRotateLeft(walkRotateLeft);
 		npc.setWalkRotateRight(walkRotateRight);
 		npc.setRunAnimation(runAnimation);
+	}
+
+	/** Notes the sequence the servant is showing under the override, and how far into it. */
+	void seen(int pose, int frame)
+	{
+		seenPose = pose;
+		seenFrame = frame;
+	}
+
+	/** The frame to show {@code pose} from: where it was last seen, or its start if it was not showing. */
+	int frameToCarryOn(int pose)
+	{
+		return pose == seenPose ? seenFrame : 0;
 	}
 
 	int getIdlePoseAnimation()

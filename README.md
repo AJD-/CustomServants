@@ -33,7 +33,7 @@ Draws your POH servant as another NPC (chathead included)
 
 ## Requirements
 
-**The `GPU` or `117 HD` plugin must be enabled.** The stock CPU renderer and 117 HD's optional
+**The `GPU`, `GPU (experimental)` or `117 HD` plugin must be enabled.** The stock CPU renderer and 117 HD's optional
 **Legacy renderer** are not supported.
 
 <details>
